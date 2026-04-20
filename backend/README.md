@@ -7,6 +7,7 @@
 - Alembic migrations
 - Core models: Department, User, Task
 - JWT authentication with email/password login
+- Password hashing bằng Argon2id (`pwdlib`)
 - Auth APIs: `POST /auth/login`, `GET /auth/me`
 - Task CRUD APIs with filters: status, overdue
 - Reference APIs for departments and users
@@ -23,3 +24,6 @@
 3. Run `alembic upgrade head`
 4. Run `python seed.py`
 5. Start app with `uvicorn app.main:app --reload`
+
+## Notes
+- Backend auth hiện dùng `pwdlib` với thuật toán Argon2id để tránh lỗi tương thích `passlib + bcrypt` trên một số môi trường Python mới.
