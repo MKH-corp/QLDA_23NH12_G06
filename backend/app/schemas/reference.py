@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
 
 from app.models.user import UserRole
 
@@ -17,7 +17,7 @@ class UserRead(BaseModel):
 
     id: int
     full_name: str
-    email: EmailStr
+    email: str
     role: UserRole
     department_id: int
     is_active: bool

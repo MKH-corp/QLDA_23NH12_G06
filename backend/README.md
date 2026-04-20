@@ -27,3 +27,4 @@
 
 ## Notes
 - Backend auth hiện dùng `pwdlib` với thuật toán Argon2id để tránh lỗi tương thích `passlib + bcrypt` trên một số môi trường Python mới.
+- Seed dev hiện dùng email nội bộ dạng `@company.local`, nên schema auth/response chấp nhận chuỗi email nội bộ thay vì validate nghiêm ngặt theo public DNS.
