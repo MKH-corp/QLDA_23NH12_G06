@@ -1,5 +1,5 @@
-export type BoardStatus = 'todo' | 'doing' | 'done' | 'blocked';
-export type ApiTaskStatus = 'todo' | 'doing' | 'done';
+export type BoardStatus = 'todo' | 'doing' | 'blocked' | 'done';
+export type ApiTaskStatus = 'todo' | 'doing' | 'blocked' | 'done';
 
 export interface Task {
   id: number;

@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { getDepartments, getUsers } from './api/references';
 import { createTask, deleteTask, getTasks, updateTask } from './api/tasks';
 import { Board } from './components/Board';
 import { TaskForm } from './components/TaskForm';
+import type { DepartmentOption, UserOption } from './types/reference';
 import type { Task, TaskFormValues } from './types/task';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [referencesLoading, setReferencesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -30,8 +35,23 @@ function App() {
     }
   };
 
+  const loadReferences = async () => {
+    setReferencesLoading(true);
+    setError(null);
+    try {
+      const [departmentData, userData] = await Promise.all([getDepartments(), getUsers()]);
+      setDepartments(departmentData);
+      setUsers(userData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load reference data');
+    } finally {
+      setReferencesLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadTasks();
+    void loadReferences();
   }, []);
 
   const handleCreateClick = () => {
@@ -88,7 +108,7 @@ function App() {
           <p className="subtitle">Minimal Kanban board connected to FastAPI backend.</p>
         </div>
         <div className="page-header__actions">
-          <button type="button" className="button-secondary" onClick={() => void loadTasks()}>
+          <button type="button" className="button-secondary" onClick={() => void Promise.all([loadTasks(), loadReferences()])}>
             Reload
           </button>
           <button type="button" onClick={handleCreateClick}>
@@ -105,7 +125,15 @@ function App() {
         </div>
 
         <aside className="layout__side">
-          <TaskForm mode={formMode} task={selectedTask} onSubmit={handleSubmit} onCancel={handleCancel} />
+          <TaskForm
+            mode={formMode}
+            task={selectedTask}
+            departments={departments}
+            users={users}
+            referencesLoading={referencesLoading}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
         </aside>
       </section>
     </main>

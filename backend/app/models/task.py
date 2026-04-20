@@ -10,6 +10,7 @@ from app.db.base import Base
 class TaskStatus(str, enum.Enum):
     TODO = "todo"
     DOING = "doing"
+    BLOCKED = "blocked"
     DONE = "done"
 
 

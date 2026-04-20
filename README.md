@@ -290,7 +290,15 @@ Cách này hoạt động được trên cả:
 
 ---
 
-## 11. Gợi ý cải tiến tiếp theo
+## 11. Cập nhật Sprint 1
+
+- Đồng bộ trạng thái task giữa backend và frontend: `todo`, `doing`, `blocked`, `done`
+- Form task không còn nhập tay ID thô cho phòng ban/người dùng; thay bằng dropdown lấy dữ liệu thật từ API
+- Bổ sung reference APIs:
+  - `GET /references/departments`
+  - `GET /references/users`
+
+## 12. Gợi ý cải tiến tiếp theo
 
 Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 - Docker cho cả **backend + frontend + db**
@@ -300,11 +308,11 @@ Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 
 ---
 
-## 12. Tài liệu con
+## 13. Tài liệu con
 - `backend/README.md`
 - `frontend/README.md`
 
 ---
 
-## 13. License
+## 14. License
 Thêm license nếu nhóm muốn public repo chính thức.

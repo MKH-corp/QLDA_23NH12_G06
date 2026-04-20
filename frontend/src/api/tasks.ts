@@ -7,7 +7,7 @@ interface BackendTask {
   id: number;
   title: string;
   description?: string | null;
-  status: 'todo' | 'doing' | 'done';
+  status: 'todo' | 'doing' | 'blocked' | 'done';
   deadline?: string | null;
   done_at?: string | null;
   base_weight: number;

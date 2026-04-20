@@ -17,9 +17,6 @@ export function apiStatusToBoardStatus(status: ApiTaskStatus): BoardStatus {
 }
 
 export function boardStatusToApiStatus(status: BoardStatus): ApiTaskStatus {
-  if (status === 'blocked') {
-    return 'doing';
-  }
   return status;
 }
 
