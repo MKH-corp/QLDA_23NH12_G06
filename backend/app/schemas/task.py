@@ -5,19 +5,14 @@ from pydantic import BaseModel, ConfigDict
 from app.models.task import TaskStatus
 
 
-class TaskBase(BaseModel):
+class TaskCreate(BaseModel):
     title: str
     description: str | None = None
     status: TaskStatus = TaskStatus.TODO
     deadline: date | None = None
     base_weight: int = 1
-    creator_id: int
     assignee_id: int
     department_id: int
-
-
-class TaskCreate(TaskBase):
-    pass
 
 
 class TaskUpdate(BaseModel):
@@ -26,7 +21,6 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     deadline: date | None = None
     base_weight: int | None = None
-    creator_id: int | None = None
     assignee_id: int | None = None
     department_id: int | None = None
 

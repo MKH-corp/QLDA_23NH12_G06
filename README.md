@@ -324,7 +324,18 @@ Cách này hoạt động được trên cả:
 - API response user không trả `password_hash`
 - Không cần migration mới vì schema database không đổi
 
-## 14. Gợi ý cải tiến tiếp theo
+## 14. Cập nhật Sprint 2 - Phần 3 (Backend Task Authorization)
+
+- CRUD `tasks` được nâng cấp theo role:
+  - `admin`: full access
+  - `manager`: chỉ quản lý task trong department của mình
+  - `staff`: chỉ xem/cập nhật/xóa task được giao cho chính mình
+- `creator_id` không còn nhận từ request body khi tạo task; backend tự lấy từ user đăng nhập
+- `GET /tasks` vẫn hỗ trợ filter `status` và `overdue`
+- Seed Sprint 2 đầy đủ hơn với admin, managers, staffs, departments và task mẫu rõ ràng
+- Không cần migration mới vì schema `tasks` hiện tại đã đủ cho rule Sprint 2
+
+## 15. Gợi ý cải tiến tiếp theo
 
 Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 - Docker cho cả **backend + frontend + db**
@@ -334,11 +345,11 @@ Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 
 ---
 
-## 15. Tài liệu con
+## 16. Tài liệu con
 - `backend/README.md`
 - `frontend/README.md`
 
 ---
 
-## 16. License
+## 17. License
 Thêm license nếu nhóm muốn public repo chính thức.
