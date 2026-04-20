@@ -146,14 +146,19 @@ h2 {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 24px;
+}
+
+.layout__main {
+  overflow-x: auto;
 }
 
 .board-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
   gap: 16px;
+  min-width: 980px;
 }
 
 .board-column,
@@ -343,13 +348,21 @@ h2 {
   font-size: 14px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1366px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
 
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .layout__main {
+    overflow-x: visible;
+  }
+
+  .board-grid {
+    min-width: 0;
   }
 
   .task-form {
