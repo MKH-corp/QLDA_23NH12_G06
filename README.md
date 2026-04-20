@@ -298,7 +298,21 @@ Cách này hoạt động được trên cả:
   - `GET /references/departments`
   - `GET /references/users`
 
-## 12. Gợi ý cải tiến tiếp theo
+## 12. Cập nhật Sprint 2 - Phần 1 (Backend Auth)
+
+- Mở rộng bảng `users` với: `password_hash`, `role`, `is_active`, `created_at`
+- Thêm role hệ thống: `admin`, `manager`, `staff`
+- Bổ sung JWT authentication bằng email/password
+- Bổ sung auth APIs:
+  - `POST /auth/login`
+  - `GET /auth/me`
+- Bổ sung reusable dependencies:
+  - `get_current_user`
+  - `require_authenticated_user`
+  - `require_admin`
+  - `require_manager_or_admin`
+
+## 13. Gợi ý cải tiến tiếp theo
 
 Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 - Docker cho cả **backend + frontend + db**
@@ -308,11 +322,11 @@ Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 
 ---
 
-## 13. Tài liệu con
+## 14. Tài liệu con
 - `backend/README.md`
 - `frontend/README.md`
 
 ---
 
-## 14. License
+## 15. License
 Thêm license nếu nhóm muốn public repo chính thức.

@@ -5,14 +5,17 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 from app.models.user import UserRole
 
 
-class DepartmentRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
-class UserRead(BaseModel):
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class AuthenticatedUserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

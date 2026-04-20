@@ -6,10 +6,16 @@
 - SQLAlchemy ORM
 - Alembic migrations
 - Core models: Department, User, Task
+- JWT authentication with email/password login
+- Auth APIs: `POST /auth/login`, `GET /auth/me`
 - Task CRUD APIs with filters: status, overdue
 - Reference APIs for departments and users
 - Auto set `done_at` when task status becomes `done`
 - Seed data for departments, users, and tasks
+
+## Default seed login
+- Email: `an@company.local`
+- Password: `Password@123`
 
 ## Quick start
 1. Copy `.env.example` to `.env`

@@ -2,10 +2,11 @@ from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.core.security import get_password_hash
 from app.db.session import SessionLocal
 from app.models.department import Department
 from app.models.task import Task, TaskStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 def seed_departments(db: Session) -> list[Department]:
@@ -23,24 +24,39 @@ def seed_departments(db: Session) -> list[Department]:
 
 
 def seed_users(db: Session, departments: list[Department]) -> list[User]:
-    existing = db.query(User).count()
-    if existing:
+    existing_users = db.query(User).order_by(User.id).all()
+    default_password_hash = get_password_hash("Password@123")
+
+    if existing_users:
+        changed = False
+        for index, user in enumerate(existing_users):
+            if not user.password_hash:
+                user.password_hash = default_password_hash
+                changed = True
+            if not user.role:
+                user.role = UserRole.ADMIN if index == 0 else UserRole.MANAGER if index in {1, 5} else UserRole.STAFF
+                changed = True
+            if user.is_active is None:
+                user.is_active = True
+                changed = True
+        if changed:
+            db.commit()
         return db.query(User).order_by(User.id).all()
 
     engineering_id = departments[0].id
     business_id = departments[1].id
 
     users = [
-        User(full_name="Nguyen Van An", email="an@company.local", department_id=engineering_id),
-        User(full_name="Tran Minh Binh", email="binh@company.local", department_id=engineering_id),
-        User(full_name="Le Thu Cuc", email="cuc@company.local", department_id=engineering_id),
-        User(full_name="Pham Gia Duy", email="duy@company.local", department_id=engineering_id),
-        User(full_name="Hoang Bao Chau", email="chau@company.local", department_id=engineering_id),
-        User(full_name="Vo Quynh Dao", email="dao@company.local", department_id=business_id),
-        User(full_name="Bui Khac Em", email="em@company.local", department_id=business_id),
-        User(full_name="Dang Thanh Giang", email="giang@company.local", department_id=business_id),
-        User(full_name="Ly Hong Ha", email="ha@company.local", department_id=business_id),
-        User(full_name="Do Khanh Linh", email="linh@company.local", department_id=business_id),
+        User(full_name="Nguyen Van An", email="an@company.local", password_hash=default_password_hash, role=UserRole.ADMIN, department_id=engineering_id, is_active=True),
+        User(full_name="Tran Minh Binh", email="binh@company.local", password_hash=default_password_hash, role=UserRole.MANAGER, department_id=engineering_id, is_active=True),
+        User(full_name="Le Thu Cuc", email="cuc@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=engineering_id, is_active=True),
+        User(full_name="Pham Gia Duy", email="duy@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=engineering_id, is_active=True),
+        User(full_name="Hoang Bao Chau", email="chau@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=engineering_id, is_active=True),
+        User(full_name="Vo Quynh Dao", email="dao@company.local", password_hash=default_password_hash, role=UserRole.MANAGER, department_id=business_id, is_active=True),
+        User(full_name="Bui Khac Em", email="em@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=business_id, is_active=True),
+        User(full_name="Dang Thanh Giang", email="giang@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=business_id, is_active=True),
+        User(full_name="Ly Hong Ha", email="ha@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=business_id, is_active=True),
+        User(full_name="Do Khanh Linh", email="linh@company.local", password_hash=default_password_hash, role=UserRole.STAFF, department_id=business_id, is_active=True),
     ]
     db.add_all(users)
     db.commit()
