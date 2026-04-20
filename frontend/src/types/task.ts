@@ -22,7 +22,6 @@ export interface TaskPayload {
   status: ApiTaskStatus;
   deadline?: string | null;
   base_weight: number;
-  creator_id: number;
   assignee_id: number;
   department_id: number;
 }
@@ -33,7 +32,6 @@ export interface TaskFormValues {
   status: BoardStatus;
   deadline: string;
   base_weight: number;
-  creator_id: number;
   assignee_id: number;
   department_id: number;
 }

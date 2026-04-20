@@ -17,6 +17,11 @@ body {
   background: #f8fafc;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 button,
 input,
 textarea,
@@ -58,9 +63,11 @@ button:hover {
   margin-bottom: 24px;
 }
 
-.page-header__actions {
+.page-header__actions,
+.toolbar-grid {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .eyebrow {
@@ -72,14 +79,69 @@ button:hover {
   font-size: 12px;
 }
 
-h1 {
+h1,
+h2 {
   margin: 0;
-  font-size: 32px;
 }
 
 .subtitle {
   margin: 8px 0 0;
   color: #475569;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+}
+
+.sidebar {
+  background: #0f172a;
+  color: white;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.sidebar__title {
+  font-size: 28px;
+}
+
+.sidebar__subtitle,
+.sidebar__footer p {
+  color: #cbd5e1;
+}
+
+.sidebar__nav {
+  display: grid;
+  gap: 12px;
+}
+
+.sidebar__nav a {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar__footer {
+  display: grid;
+  gap: 12px;
+}
+
+.role-pill {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  text-transform: capitalize;
+  font-size: 12px;
+}
+
+.shell-content {
+  min-width: 0;
 }
 
 .layout {
@@ -94,23 +156,26 @@ h1 {
   gap: 16px;
 }
 
-.board-column {
+.board-column,
+.task-form,
+.panel,
+.auth-card {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  padding: 16px;
+  padding: 20px;
+}
+
+.board-column {
   min-height: 520px;
 }
 
-.board-column__header {
+.board-column__header,
+.panel__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-}
-
-.board-column__header h3 {
-  margin: 0;
 }
 
 .board-column__body {
@@ -118,12 +183,15 @@ h1 {
   gap: 12px;
 }
 
-.board-column__empty {
-  color: #94a3b8;
+.board-column__empty,
+.panel-empty,
+.loading {
+  color: #64748b;
   padding: 24px 0;
   text-align: center;
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
+  background: white;
 }
 
 .task-card {
@@ -182,21 +250,14 @@ h1 {
 }
 
 .task-form {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 20px;
   display: grid;
   gap: 14px;
   position: sticky;
   top: 24px;
 }
 
-.task-form__header h3 {
-  margin: 0;
-}
-
-.task-form label {
+.task-form label,
+.auth-card label {
   display: grid;
   gap: 8px;
   font-size: 14px;
@@ -205,7 +266,10 @@ h1 {
 
 .task-form input,
 .task-form textarea,
-.task-form select {
+.task-form select,
+.auth-card input,
+.toolbar-grid select,
+.page-header__actions select {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
@@ -213,16 +277,19 @@ h1 {
   background: white;
 }
 
-.task-form__grid {
+.task-form__grid,
+.detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-.task-form__actions {
+.task-form__actions,
+.status-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .alert {
@@ -236,16 +303,51 @@ h1 {
   color: #991b1b;
 }
 
-.loading {
-  background: white;
-  border: 1px dashed #cbd5e1;
-  border-radius: 16px;
-  padding: 32px;
-  text-align: center;
+.screen-center {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 16px;
+}
+
+.stacked-panels {
+  display: grid;
+  gap: 24px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.hint-text {
+  margin-top: 12px;
   color: #64748b;
+  font-size: 14px;
 }
 
 @media (max-width: 1200px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
@@ -270,13 +372,9 @@ h1 {
     flex-direction: column;
   }
 
-  .page-header__actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
   .board-grid,
-  .task-form__grid {
+  .task-form__grid,
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }
