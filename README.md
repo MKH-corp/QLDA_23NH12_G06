@@ -312,7 +312,19 @@ Cách này hoạt động được trên cả:
   - `require_admin`
   - `require_manager_or_admin`
 
-## 13. Gợi ý cải tiến tiếp theo
+## 13. Cập nhật Sprint 2 - Phần 2 (Backend User/Department Authorization)
+
+- Bổ sung CRUD đầy đủ cho `departments`
+- Bổ sung CRUD đầy đủ cho `users`
+- Áp dụng phân quyền theo role:
+  - `admin`: full access với user và department
+  - `manager`: chỉ xem users trong department của mình, xem department của mình
+  - `staff`: chỉ xem user của chính mình và department của mình
+- Password của user tạo mới/cập nhật được hash ở backend
+- API response user không trả `password_hash`
+- Không cần migration mới vì schema database không đổi
+
+## 14. Gợi ý cải tiến tiếp theo
 
 Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 - Docker cho cả **backend + frontend + db**
@@ -322,11 +334,11 @@ Nếu muốn project dễ dùng hơn nữa, có thể làm tiếp:
 
 ---
 
-## 14. Tài liệu con
+## 15. Tài liệu con
 - `backend/README.md`
 - `frontend/README.md`
 
 ---
 
-## 15. License
+## 16. License
 Thêm license nếu nhóm muốn public repo chính thức.

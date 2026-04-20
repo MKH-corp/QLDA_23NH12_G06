@@ -1,22 +1,32 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_authenticated_user
 from app.db.session import get_db
-from app.models.department import Department
 from app.models.user import User
-from app.schemas.reference import DepartmentRead, UserRead
+from app.schemas.department import DepartmentRead
+from app.schemas.user import UserRead
+from app.services.department_service import DepartmentService
+from app.services.user_service import UserService
 
 router = APIRouter(prefix="/references", tags=["references"])
 
 
 @router.get("/departments", response_model=list[DepartmentRead])
-def list_departments(db: Session = Depends(get_db)) -> list[Department]:
-    stmt = select(Department).order_by(Department.name.asc())
-    return list(db.scalars(stmt).all())
+def list_departments(
+    current_user: Annotated[User, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db),
+) -> list[DepartmentRead]:
+    department_service = DepartmentService(db)
+    return department_service.list_departments(current_user)
 
 
 @router.get("/users", response_model=list[UserRead])
-def list_users(db: Session = Depends(get_db)) -> list[User]:
-    stmt = select(User).order_by(User.full_name.asc())
-    return list(db.scalars(stmt).all())
+def list_users(
+    current_user: Annotated[User, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db),
+) -> list[UserRead]:
+    user_service = UserService(db)
+    return user_service.list_users(current_user)

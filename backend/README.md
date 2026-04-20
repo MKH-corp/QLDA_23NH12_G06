@@ -9,6 +9,8 @@
 - JWT authentication with email/password login
 - Password hashing bằng Argon2id (`pwdlib`)
 - Auth APIs: `POST /auth/login`, `GET /auth/me`
+- Department CRUD APIs with role-based authorization
+- User CRUD APIs with role-based authorization
 - Task CRUD APIs with filters: status, overdue
 - Reference APIs for departments and users
 - Auto set `done_at` when task status becomes `done`
