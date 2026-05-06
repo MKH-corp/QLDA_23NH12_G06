@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { getDepartments, getUsers } from '../api/references';
-import { createTask, deleteTask, getTasks, updateTask } from '../api/tasks';
+import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
 import { Board } from '../components/Board';
 import { TaskForm } from '../components/TaskForm';
 import type { DepartmentOption, UserOption } from '../types/reference';
@@ -94,6 +94,24 @@ export function ManagerTasksPage() {
     }
   };
 
+  // Logic xử lý kéo thả (truyền cho Board)
+  const handleTaskMove = async (taskId: number, newStatus: Task['status']) => {
+    const previousTasks = [...tasks];
+
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus as Task['status'] } : task
+      )
+    );
+
+    try {
+      await updateTaskStatus(taskId, newStatus);
+    } catch (err) {
+      setTasks(previousTasks);
+      setError(err instanceof Error ? err.message : 'Failed to move task');
+    }
+  };
+
   const initialDepartment = user?.department_id ?? departments[0]?.id ?? 0;
 
   return (
@@ -133,12 +151,24 @@ export function ManagerTasksPage() {
       {error ? <div className="alert alert--error">{error}</div> : null}
 
       <section className="layout">
+        {/* VÙNG CHÍNH: Chứa Bảng Kanban */}
         <div className="layout__main">
-          {loading ? <div className="loading">Loading team tasks...</div> : <Board tasks={filteredTasks} onEdit={(task) => {
-            setSelectedTask(task);
-            setFormMode('edit');
-          }} onDelete={handleDelete} />}
+          {loading ? (
+            <div className="loading">Loading team tasks...</div>
+          ) : (
+            <Board
+              tasks={filteredTasks}
+              onEdit={(task) => {
+                setSelectedTask(task);
+                setFormMode('edit');
+              }}
+              onDelete={handleDelete}
+              onTaskMove={handleTaskMove} // <--- ĐẶT Ở ĐÂY LÀ ĐÚNG CHUẨN
+            />
+          )}
         </div>
+        
+        {/* VÙNG BÊN: Chứa Form nhập liệu */}
         <aside className="layout__side">
           <TaskForm
             mode={formMode}
@@ -151,6 +181,7 @@ export function ManagerTasksPage() {
               setSelectedTask(null);
               setFormMode('create');
             }}
+            // (Tuyệt đối không nhét onTaskMove hay onDelete vào đây nhé)
           />
           {formMode === 'create' && initialDepartment ? <p className="hint-text">New tasks will be created inside your department.</p> : null}
         </aside>
