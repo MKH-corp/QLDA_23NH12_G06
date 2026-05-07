@@ -22,16 +22,12 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers,
   });
-  if (response.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-      throw new Error('Unauthorized - Token expired');
-    }
+
   if (!response.ok) {
     const raw = await response.text();
     let message = raw || 'Request failed';
@@ -44,9 +40,12 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
         message = parsed.detail[0].msg;
       }
     } catch {
-      // keep raw text
+      // Giữ raw text nếu không parse được JSON
     }
 
+    // FIX: Ném ApiError với status code thay vì dùng window.location.href
+    // AuthContext sẽ bắt lỗi 401 và xử lý logout + điều hướng qua React Router
+    // Không dùng hard redirect để tránh vòng lặp reload vô hạn
     throw new ApiError(response.status, message);
   }
 

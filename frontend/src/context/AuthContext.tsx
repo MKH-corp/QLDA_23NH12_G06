@@ -26,12 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearStoredToken();
     setToken(null);
     setUser(null);
+    // KHÔNG dùng window.location.href ở đây
+    // React Router + ProtectedRoute sẽ tự redirect về /login khi user = null
   };
 
   const refreshMe = async () => {
     const storedToken = getStoredToken();
+
+    // Không có token → dừng loading, không gọi API
     if (!storedToken) {
       setUser(null);
+      setToken(null);
       setLoading(false);
       return;
     }
@@ -41,10 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(me);
       setToken(storedToken);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      // Token hết hạn hoặc không hợp lệ → logout sạch
+      // logout() sẽ xóa localStorage và set state về null
+      // ProtectedRoute sẽ redirect về /login tự động
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         logout();
+        return; // QUAN TRỌNG: return sớm, không throw
       }
-      throw error;
+      // Lỗi khác (network, server...) → vẫn logout để an toàn
+      logout();
     } finally {
       setLoading(false);
     }
@@ -59,7 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    void refreshMe().catch(() => undefined);
+    void refreshMe();
+    // Không cần .catch() vì refreshMe đã tự xử lý mọi lỗi bên trong
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -81,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth phải được dùng bên trong AuthProvider');
   }
   return context;
 }

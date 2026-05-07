@@ -1,7 +1,7 @@
-"""Add activity logs"""
+"""create_activity_logs_table"""
 
-revision = '0f9a5cd457e6'
-down_revision = '20260420_215600'
+revision = 'd7b098d8d51c'
+down_revision = '0742ff57fe48'
 branch_labels = None
 depends_on = None
 
@@ -29,7 +29,12 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.create_index(op.f('ix_activity_logs_id'), 'activity_logs', ['id'], unique=False)
+    op.create_index(
+        op.f('ix_activity_logs_id'),
+        'activity_logs',
+        ['id'],
+        unique=False,
+    )
 
 
 def downgrade() -> None:
