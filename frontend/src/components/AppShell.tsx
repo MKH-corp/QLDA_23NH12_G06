@@ -1,4 +1,5 @@
 import { Link, Outlet } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +19,15 @@ export function AppShell() {
           {user?.role === 'staff' ? <Link to="/staff/tasks">My Tasks</Link> : null}
           {user?.role === 'manager' ? <Link to="/manager/tasks">Team Tasks</Link> : null}
           {user?.role === 'admin' ? <Link to="/admin">Admin Management</Link> : null}
+          {user?.role === 'admin' ? (
+            <nav className="sidebar__nav">
+                {/* Dùng NavLink thay vì thẻ <a>, dùng thuộc tính 'to' thay vì 'href' */}
+                <NavLink to="/admin" end>📊 Dashboard Overview</NavLink>
+                <NavLink to="/admin/employees">👥 Employee Management</NavLink>
+                <NavLink to="/admin/projects">📁 Project Management</NavLink>
+                <NavLink to="/admin/reports">📈 Reports & Analytics</NavLink>
+            </nav>
+          ) : null}
         </nav>
 
         <div className="sidebar__footer">

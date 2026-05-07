@@ -22,12 +22,16 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-
+  
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers,
   });
-
+  if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      throw new Error('Unauthorized - Token expired');
+    }
   if (!response.ok) {
     const raw = await response.text();
     let message = raw || 'Request failed';

@@ -1,7 +1,7 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Column ,Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -39,5 +39,10 @@ class Task(Base):
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"), nullable=False)
 
     creator: Mapped["User"] = relationship(back_populates="created_tasks", foreign_keys=[creator_id])
+    # -----------------------------------------------------
+    # THÊM 2 DÒNG NÀY ĐỂ LIÊN KẾT VỚI BẢNG PROJECT
+    # -----------------------------------------------------
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    project = relationship("Project", back_populates="tasks")
     assignee: Mapped["User"] = relationship(back_populates="assigned_tasks", foreign_keys=[assignee_id])
     department: Mapped["Department"] = relationship(back_populates="tasks")

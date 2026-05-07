@@ -7,6 +7,9 @@ import { LoginPage } from './pages/LoginPage';
 import { StaffTasksPage } from './pages/StaffTasksPage';
 import { ManagerTasksPage } from './pages/ManagerTasksPage';
 import { AdminPage } from './pages/AdminPage';
+import { EmployeeManagementPage } from './pages/EmployeeManagementPage';
+import { ProjectManagementPage } from './pages/ProjectManagementPage';
+import { ReportsPage } from './pages/ReportsPage';
 
 function App() {
   return (
@@ -26,6 +29,9 @@ function App() {
 
           <Route element={<ProtectedRoute roles={['admin']} />}>
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/employees" element={<EmployeeManagementPage />} />
+            <Route path="/admin/projects" element={<ProjectManagementPage />} />
+            <Route path="/admin/reports" element={<ReportsPage />} />
           </Route>
         </Route>
       </Route>
