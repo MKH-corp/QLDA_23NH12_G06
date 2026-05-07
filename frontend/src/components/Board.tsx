@@ -1,17 +1,30 @@
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { useState } from 'react';
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragStartEvent, 
+  PointerSensor, 
+  useSensor, 
+  useSensors, 
+  closestCorners,
+  DragOverlay 
+} from '@dnd-kit/core';
+import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { BOARD_COLUMNS } from '../constants/board';
 import type { Task } from '../types/task';
 import { Column } from './Column';
+import { TaskCard } from './TaskCard';
 
 interface BoardProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
-  // THÊM DẤU ? ĐỂ TRÁNH LỖI CRASH WEB NẾU PAGE QUÊN TRUYỀN HÀM
-  onTaskMove?: (taskId: number, newStatus: Task['status']) => void; 
+  onTaskMove?: (taskId: number, newStatus: Task['status']) => void;
 }
 
 export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -20,7 +33,16 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const taskId = Number(event.active.id);
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      setActiveTask(task);
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null); 
     const { active, over } = event;
 
     if (!over) return;
@@ -31,7 +53,6 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
     const currentTask = tasks.find((t) => t.id === taskId);
     
     if (currentTask && currentTask.status !== newStatus) {
-      // KIỂM TRA XEM COMPONENT CHA CÓ TRUYỀN HÀM XUỐNG KHÔNG RỒI MỚI GỌI
       if (onTaskMove) {
         onTaskMove(taskId, newStatus);
       } else {
@@ -41,7 +62,12 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+    <DndContext 
+      sensors={sensors} 
+      collisionDetection={closestCorners} 
+      onDragStart={handleDragStart} 
+      onDragEnd={handleDragEnd}
+    >
       <div className="board-grid">
         {BOARD_COLUMNS.map((column) => (
           <Column
@@ -54,6 +80,21 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
           />
         ))}
       </div>
+
+      <DragOverlay modifiers={[restrictToWindowEdges]}>
+        {activeTask ? (
+          // GIẢI PHÁP Ở ĐÂY: Thẻ div này đóng vai trò như một "cái khay".
+          // Nó hứng tọa độ từ thư viện và bưng TaskCard bay theo chuột.
+          <div style={{ width: '280px', pointerEvents: 'none' }}>
+            <TaskCard 
+              task={activeTask} 
+              onEdit={onEdit} 
+              onDelete={onDelete} 
+              isOverlay={true} 
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

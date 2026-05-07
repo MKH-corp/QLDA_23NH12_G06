@@ -1,35 +1,43 @@
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../types/task';
 
 interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
+  isOverlay?: boolean; // Cờ báo hiệu thẻ Bóng ma
 }
 
-export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
-  // 1. Khai báo hook useDraggable để biến Component này thành vật thể kéo được
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task.id.toString(), // dnd-kit bắt buộc ID phải là dạng chuỗi (string)
-    data: { task }, // Gửi kèm data của task để sau này thả xuống cột sẽ lấy ra dùng
+export function TaskCard({ task, onEdit, onDelete, isOverlay = false }: TaskCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: task.id.toString(),
+    data: { task },
+    disabled: isOverlay, // Bóng ma thì không cần tính toán logic kéo thả nữa
   });
 
-  // 2. Cấu hình style chuyển động khi kéo
-  const style = {
-    // translate giúp thẻ di chuyển mượt mà đi theo con trỏ chuột
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1, // Mờ đi một chút khi đang lơ lửng trên không
-    cursor: isDragging ? 'grabbing' : 'grab', // Đổi icon con trỏ chuột thành hình bàn tay nắm lại
+  // GIA CỐ STYLE ĐỂ BÓNG MA KHÔNG BỊ TÀNG HÌNH
+  const style: React.CSSProperties = {
+    // Thẻ gốc thì mờ đi 30% lúc bị kéo
+    opacity: isDragging && !isOverlay ? 0.3 : 1,
+    cursor: isOverlay ? 'grabbing' : 'grab',
+    // Bóng ma thì nghiêng 3 độ và có đổ bóng
+    transform: isOverlay ? 'rotate(0deg) scale(1.02)' : undefined,
+    boxShadow: isOverlay ? '0px 15px 25px rgba(0,0,0,0.15)' : undefined,
+    
+    // --- 4 DÒNG QUAN TRỌNG ĐỂ CỨU BÓNG MA ---
+    width: isOverlay ? '280px' : undefined, // Ép cứng chiều rộng giống trong cột
+    backgroundColor: isOverlay ? '#ffffff' : undefined, // Nền trắng để không bị trong suốt
+    zIndex: isOverlay ? 9999 : undefined, // Nổi lên trên cùng (đè lên header, menu...)
+    pointerEvents: isOverlay ? 'none' : 'auto', // Tránh chuột vướng vào thẻ lúc đang kéo
   };
 
   return (
-    <article 
+    <article
       className="task-card"
-      ref={setNodeRef} // 3. Chỉ định đây là phần tử HTML sẽ nhận thao tác kéo
-      style={style}    // 4. Áp dụng style chuyển động
-      {...attributes}  // 5. Thêm các thuộc tính hỗ trợ đọc màn hình (Accessibility)
-      {...listeners}   // 6. Lắng nghe sự kiện click/giữ chuột
+      ref={isOverlay ? undefined : setNodeRef} // Bóng ma thì bỏ ref
+      style={style} // Áp dụng style mới
+      {...(isOverlay ? {} : attributes)}
+      {...(isOverlay ? {} : listeners)}
     >
       <div className="task-card__head">
         <h4>{task.title}</h4>
@@ -39,21 +47,16 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
       <p className="task-card__meta">Due: {task.due_date || 'No deadline'}</p>
       
       <div className="task-card__actions">
-        {/* 
-          7. QUAN TRỌNG: Thêm onPointerDown chặn sự kiện nổi bọt. 
-          Giúp dnd-kit hiểu là "Đang bấm nút, không phải kéo thẻ đâu, đừng can thiệp!" 
-        */}
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => onEdit(task)}
-          onPointerDown={(e) => e.stopPropagation()} 
+          onPointerDown={(e) => e.stopPropagation()}
         >
           Edit
         </button>
-        
-        <button 
-          type="button" 
-          className="button-danger" 
+        <button
+          type="button"
+          className="button-danger"
           onClick={() => onDelete(task.id)}
           onPointerDown={(e) => e.stopPropagation()}
         >
