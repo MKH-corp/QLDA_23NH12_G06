@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin, require_authenticated_user
@@ -19,16 +19,24 @@ def create_user(
     db: Session = Depends(get_db),
 ) -> UserRead:
     service = UserService(db)
-    return service.create_user(payload)
+    user = service.create_user(payload)
+    return UserRead.model_validate({**user.__dict__, "department_name": user.department.name})
 
 
 @router.get("", response_model=list[UserRead])
 def list_users(
     current_user: Annotated[User, Depends(require_authenticated_user)],
+    search: str = Query("", description="Search by name or email"),
+    skip: int = Query(0, ge=0, description="Number of users to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of users to return"),
     db: Session = Depends(get_db),
 ) -> list[UserRead]:
     service = UserService(db)
-    return service.list_users(current_user)
+    users, _ = service.search_users(current_user, search_query=search, skip=skip, limit=limit)
+    return [
+        UserRead.model_validate({**u.__dict__, "department_name": u.department.name})
+        for u in users
+    ]
 
 
 @router.get("/{user_id}", response_model=UserRead)
@@ -38,7 +46,8 @@ def get_user(
     db: Session = Depends(get_db),
 ) -> UserRead:
     service = UserService(db)
-    return service.get_user_for_actor(current_user, user_id)
+    user = service.get_user_for_actor(current_user, user_id)
+    return UserRead.model_validate({**user.__dict__, "department_name": user.department.name})
 
 
 @router.put("/{user_id}", response_model=UserRead)
@@ -49,7 +58,8 @@ def update_user(
     db: Session = Depends(get_db),
 ) -> UserRead:
     service = UserService(db)
-    return service.update_user(user_id, payload)
+    user = service.update_user(user_id, payload)
+    return UserRead.model_validate({**user.__dict__, "department_name": user.department.name})
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

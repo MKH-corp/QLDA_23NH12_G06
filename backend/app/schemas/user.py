@@ -36,3 +36,17 @@ class UserRead(BaseModel):
     department_id: int
     is_active: bool
     created_at: datetime
+    department_name: str = ""  # Will be populated by service
+
+
+class UserReadWithDept(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    email: str
+    role: UserRole
+    department_id: int
+    department_name: str
+    is_active: bool
+    created_at: datetime

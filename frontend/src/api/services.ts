@@ -17,9 +17,48 @@ export const getKpiAnalytics = () => apiRequest<KpiRecord[]>('/kpi/analytics');
 export const getNotifications = () => apiRequest<Notification[]>('/notifications/');
 export const markNotificationAsRead = (id: number) => apiRequest(`/notifications/${id}/read`, { method: 'PUT' });
 
-// Thêm vào api/services.ts
-export interface User { id: number; full_name: string; email: string; role: string; is_active: boolean; department_id: number; }
-export interface ProductivityReport { department_name: string; total_tasks: number; completed: number; overdue: number; productivity_score: number; }
+// --- USERS API ---
+export interface User { 
+  id: number; 
+  full_name: string; 
+  email: string; 
+  role: string; 
+  department_id: number; 
+  department_name?: string;
+  is_active: boolean; 
+  created_at: string;
+}
 
-export const getUsers = (search: string = '') => apiRequest<User[]>(`/users/?skip=0&limit=100&search=${search}`);
+export interface UserCreatePayload {
+  full_name: string;
+  email: string;
+  password: string;
+  role: 'admin' | 'manager' | 'staff';
+  department_id: number;
+  is_active?: boolean;
+}
+
+export interface UserUpdatePayload {
+  full_name?: string;
+  email?: string;
+  password?: string;
+  role?: 'admin' | 'manager' | 'staff';
+  department_id?: number;
+  is_active?: boolean;
+}
+
+export const getUsers = (search: string = '') => 
+  apiRequest<User[]>(`/users/?skip=0&limit=100&search=${encodeURIComponent(search)}`);
+
+export const createUser = (data: UserCreatePayload) => 
+  apiRequest<User>('/users/', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateUser = (id: number, data: UserUpdatePayload) => 
+  apiRequest<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteUser = (id: number) => 
+  apiRequest(`/users/${id}`, { method: 'DELETE' });
+
+// --- REPORTS API ---
+export interface ProductivityReport { department_name: string; total_tasks: number; completed: number; overdue: number; productivity_score: number; }
 export const getProductivityReport = () => apiRequest<ProductivityReport[]>('/reports/productivity');

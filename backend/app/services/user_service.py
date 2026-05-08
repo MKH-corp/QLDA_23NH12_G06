@@ -34,6 +34,25 @@ class UserService:
             return self.repository.list_by_department(actor.department_id)
         return [actor]
 
+    def search_users(
+        self, 
+        actor: User, 
+        search_query: str = "",
+        skip: int = 0,
+        limit: int = 100
+    ) -> tuple[list[User], int]:
+        """Search users based on actor's role."""
+        if actor.role == UserRole.ADMIN:
+            users, total = self.repository.search(search_query, skip=skip, limit=limit)
+            return users, total
+        if actor.role == UserRole.MANAGER:
+            users, total = self.repository.search(search_query, department_id=actor.department_id, skip=skip, limit=limit)
+            return users, total
+        # For STAFF, only return self
+        if search_query.lower() in actor.full_name.lower() or search_query.lower() in actor.email.lower():
+            return [actor], 1
+        return [], 0
+
     def get_user_for_actor(self, actor: User, user_id: int) -> User:
         user = self.get_user_by_id(user_id)
 
