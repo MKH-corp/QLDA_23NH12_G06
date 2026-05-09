@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.project import Project
 from app.models.task import Task
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.utils.logger import log_system_activity
 
 
 class ProjectService:
@@ -35,7 +36,8 @@ class ProjectService:
 
         return result
 
-    def create_project(self, payload: ProjectCreate) -> Project:
+    # THÊM current_user_id VÀO THAM SỐ VÀ SỬA TYPE HINT THÀNH dict
+    def create_project(self, payload: ProjectCreate, current_user_id: int) -> dict:
         """
         Tạo project mới từ validated schema.
         Chỉ các field trong ProjectCreate mới được ghi vào DB.
@@ -51,6 +53,14 @@ class ProjectService:
         self.db.add(new_project)
         self.db.commit()
         self.db.refresh(new_project)
+        
+        # [AUTO LOGGING]
+        log_system_activity(
+            db=self.db, user_id=current_user_id, 
+            action_type="CREATE", entity_type="PROJECT", entity_id=new_project.id, 
+            description=f"Created new project: {new_project.name}"
+        )
+        
         return {
             "id": new_project.id,
             "name": new_project.name,
@@ -59,7 +69,8 @@ class ProjectService:
             "total_tasks": 0     # Project mới tạo chưa có task nào
         }
 
-    def update_project(self, project: Project, payload: ProjectUpdate) -> Project:
+    # THÊM current_user_id VÀO THAM SỐ
+    def update_project(self, project: Project, payload: ProjectUpdate, current_user_id: int) -> Project:
         """
         Cập nhật project từ validated schema.
         Chỉ các field được set trong payload mới được cập nhật (exclude_unset).
@@ -67,6 +78,15 @@ class ProjectService:
         data = payload.model_dump(exclude_unset=True)
         for field, value in data.items():
             setattr(project, field, value)
+            
         self.db.commit()
         self.db.refresh(project)
+        
+        # [AUTO LOGGING]
+        log_system_activity(
+            db=self.db, user_id=current_user_id, 
+            action_type="UPDATE", entity_type="PROJECT", entity_id=project.id, 
+            description=f"Updated project: {project.name}"
+        )
+        
         return project

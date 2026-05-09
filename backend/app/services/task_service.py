@@ -9,10 +9,14 @@ from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.department_service import DepartmentService
+# IMPORT HÀM LOGGING Ở ĐÂY
+from app.utils.logger import log_system_activity
+from app.services.kpi_engine import KpiEngine  # Để trigger KPI recalculation khi hoàn thành hoặc reopen task
 
 
 class TaskService:
     def __init__(self, db: Session) -> None:
+        self.db = db  # Lưu lại db session để truyền vào logger
         self.repository = TaskRepository(db)
         self.user_repository = UserRepository(db)
         self.department_service = DepartmentService(db)
@@ -40,6 +44,14 @@ class TaskService:
         )
         if task.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
+        created_task = self.repository.create(task)
+
+        # --- GHI LOG: TẠO TASK ---
+        log_system_activity(
+            db=self.db, user_id=actor.id, 
+            action_type="CREATE", entity_type="TASK", entity_id=created_task.id, 
+            description=f"Created a new task: {created_task.title}"
+        )
         return self.repository.create(task)
 
     def list_tasks(self, actor: User, status: TaskStatus | None = None, overdue: bool | None = None) -> list[Task]:
@@ -64,6 +76,7 @@ class TaskService:
 
     def update_task(self, actor: User, task_id: int, payload: TaskUpdate) -> Task:
         task = self.get_task_for_actor(actor, task_id)
+        old_status = task.status
 
         if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to update this task")
@@ -85,21 +98,50 @@ class TaskService:
 
         for field, value in data.items():
             setattr(task, field, value)
-
+        is_completed_now = False
+        is_reopened = False
         if payload.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
-        elif payload.status in {TaskStatus.TODO, TaskStatus.DOING, TaskStatus.BLOCKED}:
+            is_completed_now = True
+        # ANTI-CHEATING: Phát hiện Reopen
+        elif old_status == TaskStatus.DONE and payload.status in {TaskStatus.TODO, TaskStatus.DOING}:
             task.done_at = None
+            task.reopen_count = (task.reopen_count or 0) + 1
+            is_reopened = True
 
+        updated_task = self.repository.update(task)
+
+        # TRIGGER KPI ENGINE
+        if is_completed_now or is_reopened:
+            kpi_engine = KpiEngine(self.db)
+            kpi_engine.recalculate_monthly_kpi(updated_task.assignee_id)
+
+        # --- GHI LOG: CẬP NHẬT HOẶC HOÀN THÀNH TASK ---
+        action = "COMPLETE" if is_completed_now else "UPDATE"
+        desc = f"Completed task: {updated_task.title}" if is_completed_now else f"Updated task: {updated_task.title}"
+        
+        log_system_activity(
+            db=self.db, user_id=actor.id, 
+            action_type=action, entity_type="TASK", entity_id=updated_task.id, 
+            description=desc
+        )
         return self.repository.update(task)
 
     def delete_task(self, actor: User, task_id: int) -> None:
         task = self.get_task_for_actor(actor, task_id)
+        task_title = task.title
 
         if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this task")
 
         self.repository.delete(task)
+
+        # --- GHI LOG: XÓA TASK ---
+        log_system_activity(
+            db=self.db, user_id=actor.id, 
+            action_type="DELETE", entity_type="TASK", entity_id=task_id, 
+            description=f"Deleted task: {task_title}"
+        )
 
     def get_task_by_id(self, task_id: int) -> Task:
         task = self.repository.get_by_id(task_id)

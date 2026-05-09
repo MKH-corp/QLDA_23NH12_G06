@@ -26,6 +26,7 @@ export function AppShell() {
                 <NavLink to="/admin/employees">👥 Employee Management</NavLink>
                 <NavLink to="/admin/projects">📁 Project Management</NavLink>
                 <NavLink to="/admin/reports">📈 Reports & Analytics</NavLink>
+                <NavLink to="/admin/kpi">🎯 KPI Performance</NavLink>
             </nav>
           ) : null}
         </nav>

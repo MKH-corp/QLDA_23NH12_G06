@@ -24,7 +24,7 @@ def get_all_projects(
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_project(
-    payload: ProjectCreate,  # FIX: Thay dict bằng Pydantic schema
+    payload: ProjectCreate,  
     db: Session = Depends(get_db),
     current_user: Annotated[User, Depends(require_authenticated_user)] = None,
 ) -> dict:
@@ -34,13 +34,14 @@ def create_project(
             detail="Không đủ quyền thực hiện thao tác này",
         )
     service = ProjectService(db)
-    return service.create_project(payload)
+    # FIX: Truyền thêm current_user.id vào service
+    return service.create_project(payload, current_user.id)
 
 
 @router.put("/{project_id}")
 def update_project(
     project_id: int,
-    payload: ProjectUpdate,  # FIX: Thay dict bằng Pydantic schema
+    payload: ProjectUpdate, 
     db: Session = Depends(get_db),
     current_user: Annotated[User, Depends(require_authenticated_user)] = None,
 ) -> dict:
@@ -56,7 +57,8 @@ def update_project(
             detail="Không tìm thấy project",
         )
     service = ProjectService(db)
-    return service.update_project(project, payload)
+    # FIX: Truyền thêm current_user.id vào service
+    return service.update_project(project, payload, current_user.id)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -78,3 +80,4 @@ def delete_project(
         )
     db.delete(project)
     db.commit()
+    

@@ -6,10 +6,13 @@ from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.services.department_service import DepartmentService
 from app.schemas.user import UserCreate, UserUpdate
+# IMPORT HÀM LOGGING Ở ĐÂY
+from app.utils.logger import log_system_activity
 
 
 class UserService:
     def __init__(self, db: Session) -> None:
+        self.db = db # Lưu session để ghi log
         self.repository = UserRepository(db)
         self.department_service = DepartmentService(db)
 
@@ -25,7 +28,16 @@ class UserService:
             department_id=payload.department_id,
             is_active=payload.is_active,
         )
-        return self.repository.create(user)
+        created_user = self.repository.create(user)
+
+        # --- GHI LOG: TẠO NHÂN VIÊN ---
+        log_system_activity(
+            db=self.db, user_id=None, # Set None (System) nếu Controller chưa truyền xuống current_user
+            action_type="CREATE", entity_type="USER", entity_id=created_user.id, 
+            description=f"Created new employee profile: {created_user.full_name}"
+        )
+
+        return created_user
 
     def list_users(self, actor: User) -> list[User]:
         if actor.role == UserRole.ADMIN:
@@ -80,11 +92,29 @@ class UserService:
         for field, value in data.items():
             setattr(user, field, value)
 
-        return self.repository.update(user)
+        updated_user = self.repository.update(user)
+
+        # --- GHI LOG: CẬP NHẬT NHÂN VIÊN ---
+        log_system_activity(
+            db=self.db, user_id=None,
+            action_type="UPDATE", entity_type="USER", entity_id=updated_user.id, 
+            description=f"Updated employee profile: {updated_user.email}"
+        )
+
+        return updated_user
 
     def delete_user(self, user_id: int) -> None:
         user = self.get_user_by_id(user_id)
+        user_email = user.email
+        
         self.repository.delete(user)
+
+        # --- GHI LOG: XÓA NHÂN VIÊN ---
+        log_system_activity(
+            db=self.db, user_id=None,
+            action_type="DELETE", entity_type="USER", entity_id=user_id, 
+            description=f"Deleted/Disabled employee: {user_email}"
+        )
 
     def get_user_by_id(self, user_id: int) -> User:
         user = self.repository.get_by_id(user_id)

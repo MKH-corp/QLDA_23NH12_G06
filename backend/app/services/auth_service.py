@@ -5,9 +5,13 @@ from app.core.security import create_access_token, verify_password
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 
+# IMPORT HÀM LOGGING Ở ĐÂY
+from app.utils.logger import log_system_activity
+
 
 class AuthService:
     def __init__(self, db: Session) -> None:
+        self.db = db # Lưu trữ db session
         self.user_repository = UserRepository(db)
 
     def authenticate_user(self, email: str, password: str) -> User:
@@ -22,4 +26,13 @@ class AuthService:
 
     def login(self, email: str, password: str) -> str:
         user = self.authenticate_user(email, password)
-        return create_access_token(subject=str(user.id), email=user.email, role=user.role.value)
+        token = create_access_token(subject=str(user.id), email=user.email, role=user.role.value)
+        
+        # --- GHI LOG: ĐĂNG NHẬP ---
+        log_system_activity(
+            db=self.db, user_id=user.id, 
+            action_type="LOGIN", entity_type="USER", entity_id=user.id, 
+            description=f"User logged in"
+        )
+        
+        return token

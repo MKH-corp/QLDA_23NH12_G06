@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getDashboardData, type DashboardData } from '../api/dashboard';
 import { NotificationBell } from '../components/NotificationBell';
+import { RecentActivityTimeline } from '../components/RecentActivityTimeline';
 
 export function AdminPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -146,18 +147,7 @@ export function AdminPage() {
 
           <div className="glass-panel">
             <h2 className="panel-title">⏱ Recent Activity</h2>
-            <div style={{ marginTop: '20px' }}>
-              {data.recent_activities.map((log) => (
-                <div key={log.id} className="activity-item">
-                  <div className="activity-dot" style={{ background: log.action === 'task' ? '#10b981' : '#3b82f6' }}></div>
-                  <div className="activity-content">
-                    <h4>{log.action.toUpperCase()} Update</h4>
-                    <p>{log.description}</p>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>{log.time_ago}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RecentActivityTimeline />
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { AdminPage } from './pages/AdminPage';
 import { EmployeeManagementPage } from './pages/EmployeeManagementPage';
 import { ProjectManagementPage } from './pages/ProjectManagementPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { KpiTrackingPage } from './pages/KpiTrackingPage';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/admin/employees" element={<EmployeeManagementPage />} />
             <Route path="/admin/projects" element={<ProjectManagementPage />} />
             <Route path="/admin/reports" element={<ReportsPage />} />
+            <Route path="/admin/kpi" element={<KpiTrackingPage />} />
           </Route>
         </Route>
       </Route>

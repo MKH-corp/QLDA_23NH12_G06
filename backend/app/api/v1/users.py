@@ -20,7 +20,16 @@ def create_user(
 ) -> UserRead:
     service = UserService(db)
     user = service.create_user(payload)
-    return UserRead.model_validate({**user.__dict__, "department_name": user.department.name})
+    return {
+    "id": user.id,
+    "full_name": user.full_name,
+    "email": user.email,
+    "role": user.role,
+    "department_id": user.department_id,
+    "is_active": user.is_active,
+    "created_at": user.created_at,
+    "department_name": user.department.name if user.department else "N/A"
+}
 
 
 @router.get("", response_model=list[UserRead])
@@ -59,7 +68,16 @@ def update_user(
 ) -> UserRead:
     service = UserService(db)
     user = service.update_user(user_id, payload)
-    return UserRead.model_validate({**user.__dict__, "department_name": user.department.name})
+    return {
+    "id": user.id,
+    "full_name": user.full_name,
+    "email": user.email,
+    "role": user.role,
+    "department_id": user.department_id,
+    "is_active": user.is_active,
+    "created_at": user.created_at,
+    "department_name": user.department.name if user.department else "N/A"
+}
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

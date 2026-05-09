@@ -5,6 +5,8 @@ from app.models.project import Project
 from app.models.kpi_record import KpiRecord
 from app.models.notification import Notification
 from app.models.activity import ActivityLog  # Thêm để Alembic tracking đúng
+from app.models.kpi_snapshot import KpiSnapshot
+from app.models.kpi_rule import KpiRule
 
 __all__ = [
     "Department",
@@ -15,4 +17,6 @@ __all__ = [
     "KpiRecord",
     "Notification",
     "ActivityLog",
+    "KpiSnapshot",
+    "KpiRule",
 ]

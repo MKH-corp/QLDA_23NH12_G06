@@ -46,3 +46,6 @@ class Task(Base):
     project = relationship("Project", back_populates="tasks")
     assignee: Mapped["User"] = relationship(back_populates="assigned_tasks", foreign_keys=[assignee_id])
     department: Mapped["Department"] = relationship(back_populates="tasks")
+    # Bổ sung 2 field này để làm Anti-cheating
+    done_at = Column(DateTime, nullable=True)
+    reopen_count = Column(Integer, default=0)
