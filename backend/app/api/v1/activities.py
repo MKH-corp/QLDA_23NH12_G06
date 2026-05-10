@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, require_authenticated_user
+from app.models.user import User
 from app.models.activity import ActivityLog
 from app.schemas.activity import ActivityListResponse, ActivityLogResponse
 from datetime import datetime, timezone
@@ -21,7 +22,11 @@ def get_time_ago(dt: datetime) -> str:
     return f"{int(seconds//86400)} days ago"
 
 @router.get("/recent", response_model=ActivityListResponse)
-def get_recent_activities(limit: int = 10, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def get_recent_activities(
+    limit: int = 20,
+    db=Depends(get_db),
+    current_user: User = Depends(require_authenticated_user)
+):
     # Tối ưu N+1 bằng joinedload user (nếu cần thiết, hoặc user backref mặc định là joined)
     logs = db.query(ActivityLog).order_by(desc(ActivityLog.created_at)).limit(limit).all()
     

@@ -52,7 +52,7 @@ class TaskService:
             action_type="CREATE", entity_type="TASK", entity_id=created_task.id, 
             description=f"Created a new task: {created_task.title}"
         )
-        return self.repository.create(task)
+        return created_task
 
     def list_tasks(self, actor: User, status: TaskStatus | None = None, overdue: bool | None = None) -> list[Task]:
         if actor.role == UserRole.ADMIN:
@@ -125,7 +125,7 @@ class TaskService:
             action_type=action, entity_type="TASK", entity_id=updated_task.id, 
             description=desc
         )
-        return self.repository.update(task)
+        return updated_task
 
     def delete_task(self, actor: User, task_id: int) -> None:
         task = self.get_task_for_actor(actor, task_id)

@@ -6,12 +6,13 @@ from app.models.kpi_snapshot import KpiSnapshot
 from app.models.user import User, UserRole
 from app.schemas.kpi import KpiSnapshotResponse, KpiRankingResponse
 from datetime import datetime
+from app.api.deps import get_db, require_authenticated_user
 from fastapi import HTTPException
 
 router = APIRouter()
 
 @router.get("/me", response_model=KpiSnapshotResponse)
-def get_my_kpi(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_my_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
     period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
     snapshot = db.query(KpiSnapshot).filter(
         KpiSnapshot.user_id == current_user.id,
@@ -23,7 +24,7 @@ def get_my_kpi(db: Session = Depends(get_db), current_user: User = Depends(get_c
     return snapshot
 
 @router.get("/team", response_model=list[KpiRankingResponse])
-def get_team_kpi(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_team_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
     """Role-based visibility: Admin thấy hết, Manager thấy team mình"""
     period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
     
@@ -42,7 +43,7 @@ def get_team_kpi(db: Session = Depends(get_db), current_user: User = Depends(get
         ) for snap, u in results
     ]
 @router.get("/{user_id}", response_model=KpiSnapshotResponse)
-def get_user_kpi(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_user_kpi(user_id: int, db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
     """API lấy điểm KPI của một nhân viên cụ thể dành cho Manager/Admin"""
     target_user = db.query(User).filter(User.id == user_id).first()
     if not target_user:
