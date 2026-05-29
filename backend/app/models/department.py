@@ -12,3 +12,4 @@ class Department(Base):
 
     users: Mapped[list["User"]] = relationship(back_populates="department")
     tasks: Mapped[list["Task"]] = relationship(back_populates="department")
+    projects = relationship("Project", back_populates="department")
