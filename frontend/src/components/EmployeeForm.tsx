@@ -44,8 +44,18 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
         department_id: initialData.department_id,
         is_active: initialData.is_active,
       });
+    } else {
+      // Reset form to empty when adding new employee
+      setFormData({
+        full_name: '',
+        email: '',
+        password: '',
+        role: 'staff' as const,
+        department_id: departments[0]?.id || 1,
+        is_active: true,
+      });
     }
-  }, [initialData]);
+  }, [initialData, departments]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
