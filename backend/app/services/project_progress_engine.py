@@ -13,12 +13,11 @@ Công thức:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-
 from sqlalchemy.orm import Session
 
 from app.models.project import Project, ProjectMilestone
 from app.models.task import Task, TaskStatus
+from app.utils.task_ultis import business_today
 
 
 class ProjectProgressEngine:
@@ -58,7 +57,7 @@ class ProjectProgressEngine:
             ProjectMilestone.project_id == project.id
         ).all()
 
-        today = date.today()
+        today = business_today()
         total_weight    = sum(t.base_weight or 1 for t in tasks)
         done_weight     = sum(t.base_weight or 1 for t in tasks if t.status == TaskStatus.DONE)
         overdue_count   = sum(
@@ -101,7 +100,7 @@ class ProjectProgressEngine:
         if not tasks:
             return 0.0
 
-        today        = date.today()
+        today        = business_today()
         total_weight = sum(t.base_weight or 1 for t in tasks)
         done_weight  = sum(t.base_weight or 1 for t in tasks if t.status == TaskStatus.DONE)
 

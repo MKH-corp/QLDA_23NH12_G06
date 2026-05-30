@@ -9,12 +9,13 @@ from datetime import datetime
 from app.api.deps import get_db, require_authenticated_user
 from fastapi import HTTPException
 from app.services.kpi_engine import KpiEngine
+from app.utils.task_ultis import business_period_key
 
 router = APIRouter()
 
 @router.get("/me", response_model=KpiSnapshotResponse)
 def get_my_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
-    period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+    period_key = business_period_key()
     snapshot = db.query(KpiSnapshot).filter(
         KpiSnapshot.user_id == current_user.id,
         KpiSnapshot.period_key == period_key
@@ -27,7 +28,7 @@ def get_my_kpi(db=Depends(get_db), current_user: User = Depends(require_authenti
 @router.get("/team", response_model=list[KpiRankingResponse])
 def get_team_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
     """Role-based visibility: Admin thấy hết, Manager thấy team mình"""
-    period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+    period_key = business_period_key()
     
     query = db.query(KpiSnapshot, User).join(User, KpiSnapshot.user_id == User.id)\
               .filter(KpiSnapshot.period_key == period_key)
@@ -58,7 +59,7 @@ def get_user_kpi(user_id: int, db=Depends(get_db), current_user: User = Depends(
     if current_user.role == UserRole.MANAGER and target_user.department_id != current_user.department_id:
         raise HTTPException(status_code=403, detail="Không được phép xem KPI của phòng ban khác")
 
-    period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+    period_key = business_period_key()
     snapshot = db.query(KpiSnapshot).filter(
         KpiSnapshot.user_id == user_id,
         KpiSnapshot.period_key == period_key

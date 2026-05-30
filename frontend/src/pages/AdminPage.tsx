@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { getDashboardData, type DashboardData } from '../api/dashboard';
-import { NotificationBell } from '../components/NotificationBell';
 import { RecentActivityTimeline } from '../components/RecentActivityTimeline';
 
 export function AdminPage() {
@@ -30,7 +29,6 @@ export function AdminPage() {
       {/* ... GIỮ NGUYÊN PHẦN HEADER & QUICK ACTIONS ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1>Admin Dashboard</h1>
-        <NotificationBell />
       </div>
 
       {/* 3. THẺ THỐNG KÊ DATA THẬT */}

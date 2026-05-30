@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, UTC
+from datetime import timedelta
 from app.models.notification import Notification
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.kpi_snapshot import KpiSnapshot
+from app.utils.task_ultis import business_day_utc_range, business_period_key, business_today
 
 
 class NotificationEngine:
@@ -11,8 +12,8 @@ class NotificationEngine:
 
     def __init__(self, db: Session):
         self.db = db
-        self.today = datetime.now(UTC).date()
-        self.period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+        self.today = business_today()
+        self.period_key = business_period_key()
 
     def check_all(self):
         """Run all notification checks for all users"""
@@ -178,11 +179,12 @@ class NotificationEngine:
 
     def _notification_exists_today(self, user_id: int, notification_type: str) -> bool:
         """Check if a notification of the same type already exists for today"""
-        today_start = datetime.combine(self.today, datetime.min.time())
+        today_start, tomorrow_start = business_day_utc_range(self.today)
 
         existing = self.db.query(Notification).filter(
             Notification.user_id == user_id,
             Notification.created_at >= today_start,
+            Notification.created_at < tomorrow_start,
             Notification.metadata_json["notification_type"].astext == notification_type,
         ).first()
 

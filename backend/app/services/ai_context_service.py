@@ -1,10 +1,11 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, UTC
+from datetime import timedelta
 from app.models.user import User, UserRole
 from app.models.task import Task, TaskStatus
 from app.models.kpi_snapshot import KpiSnapshot
 from app.models.notification import Notification
 from app.models.department import Department
+from app.utils.task_ultis import business_period_key, business_today
 
 
 class AIContextService:
@@ -12,8 +13,8 @@ class AIContextService:
 
     def __init__(self, db: Session):
         self.db = db
-        self.today = datetime.now(UTC).date()
-        self.period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+        self.today = business_today()
+        self.period_key = business_period_key()
 
     def get_context_for_user(self, current_user: User) -> dict:
         """Get AI context for a user based on their role and permissions"""

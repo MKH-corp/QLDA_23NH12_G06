@@ -1,9 +1,8 @@
-from datetime import date
-
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
+from app.utils.task_ultis import business_today
 
 
 class TaskRepository:
@@ -32,7 +31,7 @@ class TaskRepository:
             stmt = stmt.where(Task.status == status)
 
         if overdue is True:
-            stmt = stmt.where(Task.deadline.is_not(None), Task.deadline < date.today(), Task.status != TaskStatus.DONE)
+            stmt = stmt.where(Task.deadline.is_not(None), Task.deadline < business_today(), Task.status != TaskStatus.DONE)
 
         if department_id is not None:
             stmt = stmt.where(Task.department_id == department_id)

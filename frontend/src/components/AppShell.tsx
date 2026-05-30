@@ -2,6 +2,7 @@ import { Link, Outlet } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext';
+import { NotificationBell } from './NotificationBell';
 
 export function AppShell() {
   const { user, logout } = useAuth();
@@ -44,6 +45,9 @@ export function AppShell() {
       </aside>
 
       <main className="shell-content">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <NotificationBell />
+        </div>
         <Outlet />
       </main>
     </div>

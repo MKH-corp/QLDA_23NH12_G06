@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-this-secret-in-env"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    business_timezone: str = "Asia/Ho_Chi_Minh"
 
     model_config = SettingsConfigDict(
         env_file=".env",
