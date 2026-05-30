@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     business_timezone: str = "Asia/Ho_Chi_Minh"
+    notification_scheduler_enabled: bool = True
+    notification_scheduler_interval_seconds: int = 300
 
     model_config = SettingsConfigDict(
         env_file=".env",

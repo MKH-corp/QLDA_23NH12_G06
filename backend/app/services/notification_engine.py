@@ -42,8 +42,8 @@ class NotificationEngine:
                 task_ids = [t.id for t in overdue_tasks]
                 notification = Notification(
                     user_id=user_id,
-                    title=f"Ban co {len(overdue_tasks)} cong viec da qua han",
-                    message=f"Phat hien {len(overdue_tasks)} task chưa hoàn thành đã vượt quá deadline. Vui lòng ưu tiên hoàn thành các task này.",
+                    title=f"Bạn có {len(overdue_tasks)} công việc đã quá hạn",
+                    message=f"Phát hiện {len(overdue_tasks)} công việc chưa hoàn thành đã vượt quá thời hạn. Vui lòng ưu tiên xử lý.",
                     type="danger",
                     severity="danger",
                     source="notification_engine",
@@ -74,8 +74,8 @@ class NotificationEngine:
                 task_ids = [t.id for t in near_deadline_tasks]
                 notification = Notification(
                     user_id=user_id,
-                    title=f"Ban co {len(near_deadline_tasks)} cong viec sap toi han",
-                    message=f"Phat hien {len(near_deadline_tasks)} task sẽ đến deadline trong 2 ngày tới. Hãy sắp xếp thời gian hợp lý.",
+                    title=f"Bạn có {len(near_deadline_tasks)} công việc sắp tới hạn",
+                    message=f"Phát hiện {len(near_deadline_tasks)} công việc sẽ tới hạn trong 2 ngày tới. Hãy sắp xếp thời gian hợp lý.",
                     type="warning",
                     severity="warning",
                     source="notification_engine",
@@ -101,8 +101,8 @@ class NotificationEngine:
                 task_ids = [t.id for t in blocked_tasks]
                 notification = Notification(
                     user_id=user_id,
-                    title=f"Ban co {len(blocked_tasks)} cong viec bi chan",
-                    message=f"Phat hien {len(blocked_tasks)} task đang ở trạng thái blocked. Vui lòng kiểm tra và xử lý các vấn đề để tiếp tục công việc.",
+                    title=f"Bạn có {len(blocked_tasks)} công việc bị chặn",
+                    message=f"Phát hiện {len(blocked_tasks)} công việc đang bị chặn. Vui lòng kiểm tra và xử lý nguyên nhân.",
                     type="warning",
                     severity="warning",
                     source="notification_engine",
@@ -127,8 +127,8 @@ class NotificationEngine:
             if not self._notification_exists_today(user_id, "low_kpi"):
                 notification = Notification(
                     user_id=user_id,
-                    title="KPI thang nay thap hon 70",
-                    message=f"Diem KPI tháng này của bạn là {snapshot.total_score:.1f}, thấp hơn ngưỡng 70. Hãy tập trung hoàn thành các task và cải thiện hiệu suất.",
+                    title="KPI tháng này thấp hơn 70",
+                    message=f"Điểm KPI tháng này của bạn là {snapshot.total_score:.1f}, thấp hơn ngưỡng 70. Hãy tập trung hoàn thành công việc và cải thiện hiệu suất.",
                     type="warning",
                     severity="warning",
                     source="notification_engine",
@@ -160,8 +160,8 @@ class NotificationEngine:
             if not existing:
                 notification = Notification(
                     user_id=user_id,
-                    title="Ban la nhan vien xuat sac",
-                    message=f"Ban da tro thanh nhan vien xuat sac voi KPI {snapshot.total_score:.1f} va 0 task qua han. Chuc mung! Hay tiep tuc giu vung thanh tich nay.",
+                    title="Bạn là nhân viên xuất sắc",
+                    message=f"Bạn đạt KPI {snapshot.total_score:.1f} và không có công việc quá hạn. Hãy tiếp tục duy trì kết quả này.",
                     type="success",
                     severity="success",
                     source="notification_engine",

@@ -83,8 +83,6 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
 
       <DragOverlay modifiers={[restrictToWindowEdges]}>
         {activeTask ? (
-          // GIẢI PHÁP Ở ĐÂY: Thẻ div này đóng vai trò như một "cái khay".
-          // Nó hứng tọa độ từ thư viện và bưng TaskCard bay theo chuột.
           <div style={{ width: '280px', pointerEvents: 'none' }}>
             <TaskCard 
               task={activeTask} 

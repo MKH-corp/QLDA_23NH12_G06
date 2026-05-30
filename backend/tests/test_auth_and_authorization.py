@@ -97,8 +97,9 @@ class TaskAuthorizationTests(unittest.TestCase):
             title="Other task",
             status=TaskStatus.TODO,
         )
-        tasks = TaskService(self.db).list_tasks(self.staff)
+        tasks, total = TaskService(self.db).list_tasks(self.staff)
         self.assertEqual([item.id for item in tasks], [own_task.id])
+        self.assertEqual(total, 1)
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ class ActivityLogResponse(BaseModel):
     id: int
     action: str
     description: str
-    time_ago: str # Sẽ tính toán: "10 mins ago", "2 hours ago"
+    time_ago: str
 
 class DashboardResponse(BaseModel):
     stats: DashboardStats

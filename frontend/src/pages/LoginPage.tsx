@@ -27,7 +27,7 @@ export function LoginPage() {
       const destination = (location.state as { from?: string } | null)?.from;
       navigate(destination ?? '/redirect-by-role', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
@@ -37,9 +37,9 @@ export function LoginPage() {
     <div className="screen-center">
       <form className="auth-card" onSubmit={handleSubmit}>
         <div>
-          <p className="eyebrow">Sprint 2</p>
-          <h1>Login</h1>
-          <p className="subtitle">Use your work account to access the role-based dashboard.</p>
+          <p className="eyebrow">Work & KPI</p>
+          <h1>Đăng nhập</h1>
+          <p className="subtitle">Sử dụng tài khoản công việc để truy cập hệ thống.</p>
         </div>
 
         {error ? <div className="alert alert--error">{error}</div> : null}
@@ -50,12 +50,12 @@ export function LoginPage() {
         </label>
 
         <label>
-          Password
+          Mật khẩu
           <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
         </label>
 
         <button type="submit" disabled={loading}>
-          {loading ? 'Signing in...' : 'Login'}
+          {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
       </form>
     </div>

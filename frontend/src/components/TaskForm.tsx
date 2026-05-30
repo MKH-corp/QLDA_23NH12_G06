@@ -95,47 +95,47 @@ export function TaskForm({
   return (
     <form className="task-form" onSubmit={handleSubmit}>
       <div className="task-form__header">
-        <h3>{mode === 'create' ? 'Create Task' : 'Edit Task'}</h3>
+        <h3>{mode === 'create' ? 'Tạo công việc' : 'Sửa công việc'}</h3>
       </div>
 
       <label>
-        Title
+        Tiêu đề
         <input
           value={values.title}
           onChange={(event) => handleChange('title', event.target.value)}
           required
-          placeholder="Enter task title"
+          placeholder="Nhập tiêu đề công việc"
         />
       </label>
 
       <label>
-        Description
+        Mô tả
         <textarea
           value={values.description}
           onChange={(event) => handleChange('description', event.target.value)}
           rows={3}
-          placeholder="Short task description"
+          placeholder="Mô tả ngắn"
         />
       </label>
 
       <div className="task-form__grid">
         <label>
-          Status
+          Trạng thái
           <select value={values.status} onChange={(event) => handleChange('status', event.target.value)}>
-            <option value="todo">Todo</option>
-            <option value="doing">Doing</option>
-            <option value="blocked">Blocked</option>
-            <option value="done">Done</option>
+            <option value="todo">Cần làm</option>
+            <option value="doing">Đang làm</option>
+            <option value="blocked">Bị chặn</option>
+            <option value="done">Hoàn thành</option>
           </select>
         </label>
 
         <label>
-          Due date
+          Thời hạn
           <input type="date" value={values.deadline} onChange={(event) => handleChange('deadline', event.target.value)} />
         </label>
 
         <label>
-          Priority weight
+          Trọng số ưu tiên
           <input
             type="number"
             min={1}
@@ -147,7 +147,7 @@ export function TaskForm({
 
         {!hideDepartment ? (
           <label>
-            Department
+            Phòng ban
             <select
               value={values.department_id}
               onChange={(event) => handleDepartmentChange(Number(event.target.value))}
@@ -164,7 +164,7 @@ export function TaskForm({
 
         {!hideAssignee ? (
           <label>
-            Assignee
+            Người phụ trách
             <select
               value={values.assignee_id}
               onChange={(event) => handleChange('assignee_id', Number(event.target.value))}
@@ -182,10 +182,10 @@ export function TaskForm({
 
       <div className="task-form__actions">
         <button type="button" className="button-secondary" onClick={onCancel}>
-          Cancel
+          Hủy
         </button>
         <button type="submit" disabled={submitting || referencesLoading || (!hideAssignee && departmentUsers.length === 0)}>
-          {submitting ? 'Saving...' : mode === 'create' ? 'Create' : 'Save changes'}
+          {submitting ? 'Đang lưu...' : mode === 'create' ? 'Tạo mới' : 'Lưu thay đổi'}
         </button>
       </div>
     </form>

@@ -1,68 +1,76 @@
 import { useState } from 'react';
-import { getNotifications, markNotificationAsRead, runNotificationCheck } from '../api/services';
-import { useFetch } from '../hooks/useApi';
+
+import { getNotifications, markNotificationAsRead } from '../api/services';
+import { PaginationControls } from './PaginationControls';
 
 export function NotificationBell() {
-  const { data: notifications, refetch } = useFetch(getNotifications);
+  const [notifications, setNotifications] = useState<Awaited<ReturnType<typeof getNotifications>> | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [error, setError] = useState('');
 
-  const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const loadNotifications = async (nextPage = page) => {
+    try {
+      const result = await getNotifications(nextPage);
+      setNotifications(result);
+      setPage(nextPage);
+      setError('');
+    } catch {
+      setError('Không thể tải thông báo.');
+    }
+  };
 
   const handleMarkAsRead = async (id: number) => {
     await markNotificationAsRead(id);
-    refetch(); // Cập nhật lại số đếm sau khi click
+    await loadNotifications();
   };
 
   const handleToggle = async () => {
     const nextIsOpen = !isOpen;
     setIsOpen(nextIsOpen);
-
-    if (nextIsOpen) {
-      try {
-        await runNotificationCheck();
-      } catch (error) {
-        console.error('Failed to refresh notifications:', error);
-      } finally {
-        await refetch();
-      }
-    }
+    if (nextIsOpen) await loadNotifications(1);
   };
 
+  const unreadCount = notifications?.unread_count ?? 0;
+
   return (
-    <div style={{ position: 'relative' }}>
-      <button className="icon-btn" onClick={handleToggle}>
+    <div className="floating-menu">
+      <button type="button" className="icon-btn" onClick={() => void handleToggle()} aria-label="Mở thông báo">
         🔔
-        {unreadCount > 0 && <span className="notify-badge">{unreadCount}</span>}
+        {unreadCount > 0 ? <span className="notify-badge">{unreadCount}</span> : null}
       </button>
 
-      {isOpen && (
-        <div className="glass-panel" style={{ position: 'absolute', right: 0, top: '50px', width: '320px', zIndex: 100, padding: '16px' }}>
-          <h4 style={{ margin: '0 0 12px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>Notifications</h4>
-          
-          {notifications?.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center' }}>No new notifications</p>
+      {isOpen ? (
+        <div className="glass-panel floating-menu__panel notification-panel">
+          <h4>Thông báo</h4>
+          {error ? <p className="alert alert--error">{error}</p> : null}
+          {!notifications?.items.length ? (
+            <p className="empty-copy">Chưa có thông báo.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }}>
-              {notifications?.map(note => (
-                <div 
-                  key={note.id} 
-                  onClick={() => handleMarkAsRead(note.id)}
-                  style={{ 
-                    padding: '8px', 
-                    borderRadius: '8px', 
-                    background: note.is_read ? 'transparent' : '#f0fdf4',
-                    cursor: 'pointer',
-                    opacity: note.is_read ? 0.6 : 1
-                  }}
+            <div className="notification-list">
+              {notifications.items.map((note) => (
+                <button
+                  type="button"
+                  key={note.id}
+                  onClick={() => void handleMarkAsRead(note.id)}
+                  className={`notification-item ${note.is_read ? 'notification-item--read' : ''}`}
                 >
-                  <strong style={{ fontSize: '13px', color: '#0f172a' }}>{note.title}</strong>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>{note.message}</p>
-                </div>
+                  <strong>{note.title}</strong>
+                  <span>{note.message}</span>
+                </button>
               ))}
             </div>
           )}
+          {notifications ? (
+            <PaginationControls
+              page={notifications.page}
+              pages={notifications.pages}
+              total={notifications.total}
+              onPageChange={(nextPage) => void loadNotifications(nextPage)}
+            />
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -61,12 +61,27 @@ class TaskService:
         )
         return created_task
 
-    def list_tasks(self, actor: User, status: TaskStatus | None = None, overdue: bool | None = None) -> list[Task]:
+    def list_tasks(
+        self,
+        actor: User,
+        status: TaskStatus | None = None,
+        overdue: bool | None = None,
+        assignee_id: int | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Task], int]:
         if actor.role == UserRole.ADMIN:
-            return self.repository.list(status=status, overdue=overdue)
+            return self.repository.list(status=status, overdue=overdue, assignee_id=assignee_id, page=page, page_size=page_size)
         if actor.role == UserRole.MANAGER:
-            return self.repository.list(status=status, overdue=overdue, department_id=actor.department_id)
-        return self.repository.list(status=status, overdue=overdue, assignee_id=actor.id)
+            return self.repository.list(
+                status=status,
+                overdue=overdue,
+                department_id=actor.department_id,
+                assignee_id=assignee_id,
+                page=page,
+                page_size=page_size,
+            )
+        return self.repository.list(status=status, overdue=overdue, assignee_id=actor.id, page=page, page_size=page_size)
 
     def get_task_for_actor(self, actor: User, task_id: int) -> Task:
         task = self.get_task_by_id(task_id)

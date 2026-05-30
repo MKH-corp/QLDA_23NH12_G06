@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.models.activity import ActivityLog
@@ -27,8 +28,11 @@ class DashboardService:
         users_query = self.db.query(User).filter(User.is_active == True)
         departments_query = self.db.query(Department)
         tasks_query = self.db.query(Task)
-        snapshots_query = (
-            self.db.query(KpiSnapshot)
+        snapshot_stats_query = (
+            self.db.query(
+                func.count(KpiSnapshot.id),
+                func.coalesce(func.avg(KpiSnapshot.total_score), 0),
+            )
             .join(User, KpiSnapshot.user_id == User.id)
             .filter(KpiSnapshot.period_key == period_key, User.is_active == True)
         )
@@ -37,21 +41,35 @@ class DashboardService:
             users_query = users_query.filter(User.department_id == actor.department_id)
             departments_query = departments_query.filter(Department.id == actor.department_id)
             tasks_query = tasks_query.filter(Task.department_id == actor.department_id)
-            snapshots_query = snapshots_query.filter(User.department_id == actor.department_id)
+            snapshot_stats_query = snapshot_stats_query.filter(User.department_id == actor.department_id)
 
-        users = users_query.all()
+        total_employees = users_query.count()
         departments = departments_query.all()
-        snapshots = snapshots_query.all()
         completed_tasks = tasks_query.filter(Task.status == "done").count()
-        avg_kpi = round(sum(item.total_score for item in snapshots) / len(snapshots), 1) if snapshots else 0
+        _, avg_kpi_value = snapshot_stats_query.one()
+        avg_kpi = round(float(avg_kpi_value), 1)
 
+        department_scores_query = (
+            self.db.query(
+                Department.id,
+                Department.name,
+                func.coalesce(func.avg(KpiSnapshot.total_score), 0),
+            )
+            .outerjoin(User, and_(User.department_id == Department.id, User.is_active == True))
+            .outerjoin(
+                KpiSnapshot,
+                and_(KpiSnapshot.user_id == User.id, KpiSnapshot.period_key == period_key),
+            )
+        )
+        if actor.role == UserRole.MANAGER:
+            department_scores_query = department_scores_query.filter(Department.id == actor.department_id)
         department_charts = [
             DepartmentPerformance(
-                id=department.id,
-                name=department.name,
-                score=self._department_score(department.id, period_key),
+                id=department_id,
+                name=department_name,
+                score=round(float(score), 1),
             )
-            for department in departments
+            for department_id, department_name, score in department_scores_query.group_by(Department.id, Department.name).all()
         ]
 
         top_performers_query = (
@@ -94,13 +112,13 @@ class DashboardService:
 
         best_department = max(department_charts, key=lambda item: item.score) if department_charts else None
         insights = (
-            f"Nang suat trung binh dat {avg_kpi}%. "
-            f"Phong {best_department.name if best_department else 'N/A'} dang co hieu suat cao nhat."
+            f"Năng suất trung bình đạt {avg_kpi}%. "
+            f"Phòng {best_department.name if best_department else 'N/A'} đang có hiệu suất cao nhất."
         )
 
         return DashboardResponse(
             stats=DashboardStats(
-                total_employees=len(users),
+                total_employees=total_employees,
                 active_departments=len(departments),
                 completed_tasks=completed_tasks,
                 avg_kpi=avg_kpi,
@@ -111,19 +129,6 @@ class DashboardService:
             ai_insights=insights,
         )
 
-    def _department_score(self, department_id: int, period_key: str) -> float:
-        snapshots = (
-            self.db.query(KpiSnapshot)
-            .join(User, KpiSnapshot.user_id == User.id)
-            .filter(
-                User.department_id == department_id,
-                User.is_active == True,
-                KpiSnapshot.period_key == period_key,
-            )
-            .all()
-        )
-        return round(sum(item.total_score for item in snapshots) / len(snapshots), 1) if snapshots else 0
-
     @staticmethod
     def _format_time_ago(created_at: datetime | None) -> str:
         if created_at is None:
@@ -132,9 +137,9 @@ class DashboardService:
             created_at = created_at.replace(tzinfo=timezone.utc)
         seconds = (datetime.now(timezone.utc) - created_at).total_seconds()
         if seconds < 60:
-            return "Just now"
+            return "Vừa xong"
         if seconds < 3600:
-            return f"{int(seconds // 60)} mins ago"
+            return f"{int(seconds // 60)} phút trước"
         if seconds < 86400:
-            return f"{int(seconds // 3600)} hours ago"
-        return f"{int(seconds // 86400)} days ago"
+            return f"{int(seconds // 3600)} giờ trước"
+        return f"{int(seconds // 86400)} ngày trước"

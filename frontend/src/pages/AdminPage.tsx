@@ -21,14 +21,14 @@ export function AdminPage() {
   }, []);
 
   if (loading || !data) {
-    return <div className="screen-center"><div className="loading">Initializing Enterprise Dashboard...</div></div>;
+    return <div className="screen-center"><div className="loading">Đang tải dashboard...</div></div>;
   }
 
   return (
     <div className="admin-dashboard">
       {/* ... GIỮ NGUYÊN PHẦN HEADER & QUICK ACTIONS ... */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1>Admin Dashboard</h1>
+        <h1>Tổng quan hệ thống</h1>
       </div>
 
       {/* 3. THẺ THỐNG KÊ DATA THẬT */}
@@ -36,28 +36,28 @@ export function AdminPage() {
         <div className="glass-panel stat-card">
           <div className="stat-icon blue">👥</div>
           <div className="stat-info">
-            <p>Total Employees</p>
+            <p>Tổng nhân viên</p>
             <h3>{data.stats.total_employees}</h3>
           </div>
         </div>
         <div className="glass-panel stat-card">
           <div className="stat-icon green">🏢</div>
           <div className="stat-info">
-            <p>Active Departments</p>
+            <p>Phòng ban hoạt động</p>
             <h3>{data.stats.active_departments}</h3>
           </div>
         </div>
         <div className="glass-panel stat-card">
           <div className="stat-icon purple">✅</div>
           <div className="stat-info">
-            <p>Completed Tasks</p>
+            <p>Công việc hoàn thành</p>
             <h3>{data.stats.completed_tasks}</h3>
           </div>
         </div>
         <div className="glass-panel stat-card">
           <div className="stat-icon orange">📈</div>
           <div className="stat-info">
-            <p>Avg. KPI Rate</p>
+            <p>KPI trung bình</p>
             <h3>{data.stats.avg_kpi}%</h3>
           </div>
         </div>
@@ -70,7 +70,7 @@ export function AdminPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <div className="glass-panel">
-            <h2 className="panel-title">📊 Department Performance Analytics</h2>
+            <h2 className="panel-title">Hiệu suất theo phòng ban</h2>
             <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', gap: '20px', padding: '20px 0', borderBottom: '1px dashed #e2e8f0' }}>
               {data.department_charts.map((dept, i) => (
                 <div key={dept.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
@@ -89,15 +89,15 @@ export function AdminPage() {
           </div>
 
           <div className="glass-panel">
-            <h2 className="panel-title">🏆 Top Employee Performance</h2>
+            <h2 className="panel-title">Nhân viên có hiệu suất cao</h2>
             <table className="modern-table">
               <thead>
                 <tr>
-                  <th>Employee</th>
-                  <th>Department</th>
-                  <th>Tasks Done</th>
-                  <th>KPI Score</th>
-                  <th>Status</th>
+                  <th>Nhân viên</th>
+                  <th>Phòng ban</th>
+                  <th>Đã hoàn thành</th>
+                  <th>Điểm KPI</th>
+                  <th>Đánh giá</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,7 +125,7 @@ export function AdminPage() {
                       </div>
                     </td>
                     <td>
-                      {user.kpi_score >= 90 ? <span className="badge badge--low">Excellent</span> : <span className="badge badge--medium">Needs Improvement</span>}
+                      {user.kpi_score >= 90 ? <span className="badge badge--low">Xuất sắc</span> : <span className="badge badge--medium">Cần cải thiện</span>}
                     </td>
                   </tr>
                 ))}
@@ -137,14 +137,14 @@ export function AdminPage() {
         {/* AI Insights & Hoạt động gần đây */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="glass-panel" style={{ background: 'linear-gradient(135deg, #1e3a8a, #312e81)', color: 'white' }}>
-            <h2 className="panel-title" style={{ color: 'white' }}>✨ AI Productivity Insights</h2>
+            <h2 className="panel-title" style={{ color: 'white' }}>Insight hiệu suất</h2>
             <p style={{ fontSize: '14px', lineHeight: '1.6', opacity: 0.9 }}>
               {data.ai_insights}
             </p>
           </div>
 
           <div className="glass-panel">
-            <h2 className="panel-title">⏱ Recent Activity</h2>
+            <h2 className="panel-title">Hoạt động gần đây</h2>
             <RecentActivityTimeline />
           </div>
         </div>

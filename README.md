@@ -210,6 +210,8 @@ File mẫu:
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/work_kpi_db
 APP_NAME=Work & KPI Management API
 BUSINESS_TIMEZONE=Asia/Ho_Chi_Minh
+NOTIFICATION_SCHEDULER_ENABLED=true
+NOTIFICATION_SCHEDULER_INTERVAL_SECONDS=300
 ```
 
 ### Frontend - `frontend/.env`

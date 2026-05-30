@@ -46,9 +46,9 @@ class DashboardAndActivityScopeTests(unittest.TestCase):
         self.assertEqual([item.description for item in dashboard.recent_activities], ["engineering activity"])
 
     def test_activity_endpoint_scopes_staff_and_manager(self) -> None:
-        staff_result = get_recent_activities(limit=20, db=self.db, current_user=self.engineer)
-        manager_result = get_recent_activities(limit=20, db=self.db, current_user=self.manager)
-        admin_result = get_recent_activities(limit=20, db=self.db, current_user=self.admin)
+        staff_result = get_recent_activities(page=1, page_size=20, db=self.db, current_user=self.engineer)
+        manager_result = get_recent_activities(page=1, page_size=20, db=self.db, current_user=self.manager)
+        admin_result = get_recent_activities(page=1, page_size=20, db=self.db, current_user=self.admin)
         self.assertEqual([item.description for item in staff_result.data], ["engineering activity"])
         self.assertEqual([item.description for item in manager_result.data], ["engineering activity"])
         self.assertEqual({item.description for item in admin_result.data}, {"engineering activity", "business activity"})

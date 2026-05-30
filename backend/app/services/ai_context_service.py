@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import timedelta
 from app.models.user import User, UserRole
 from app.models.task import Task, TaskStatus
@@ -90,11 +90,14 @@ class AIContextService:
         team_overdue = 0
         team_tasks_done = 0
 
+        snapshots = self.db.query(KpiSnapshot).filter(
+            KpiSnapshot.user_id.in_([user.id for user in team_users]),
+            KpiSnapshot.period_key == self.period_key,
+        ).all()
+        snapshots_by_user = {snapshot.user_id: snapshot for snapshot in snapshots}
+
         for user in team_users:
-            snapshot = self.db.query(KpiSnapshot).filter(
-                KpiSnapshot.user_id == user.id,
-                KpiSnapshot.period_key == self.period_key
-            ).first()
+            snapshot = snapshots_by_user.get(user.id)
 
             if snapshot:
                 team_kpis.append(snapshot.total_score)
@@ -129,7 +132,7 @@ class AIContextService:
 
     def _get_system_context(self) -> dict:
         """Get system-wide context for admin"""
-        all_users = self.db.query(User).filter(User.is_active == True).all()
+        all_users = self.db.query(User).options(joinedload(User.department)).filter(User.is_active == True).all()
         all_depts = self.db.query(Department).all()
 
         all_kpis = []
@@ -138,11 +141,14 @@ class AIContextService:
         system_overdue = 0
         system_tasks_done = 0
 
+        snapshots = self.db.query(KpiSnapshot).filter(
+            KpiSnapshot.user_id.in_([user.id for user in all_users]),
+            KpiSnapshot.period_key == self.period_key,
+        ).all()
+        snapshots_by_user = {snapshot.user_id: snapshot for snapshot in snapshots}
+
         for user in all_users:
-            snapshot = self.db.query(KpiSnapshot).filter(
-                KpiSnapshot.user_id == user.id,
-                KpiSnapshot.period_key == self.period_key
-            ).first()
+            snapshot = snapshots_by_user.get(user.id)
 
             if snapshot:
                 all_kpis.append(snapshot.total_score)

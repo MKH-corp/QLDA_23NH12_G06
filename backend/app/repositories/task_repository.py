@@ -1,4 +1,4 @@
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
@@ -24,8 +24,10 @@ class TaskRepository:
         overdue: bool | None = None,
         department_id: int | None = None,
         assignee_id: int | None = None,
-    ) -> list[Task]:
-        stmt: Select[tuple[Task]] = select(Task).order_by(Task.id.desc())
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Task], int]:
+        stmt: Select[tuple[Task]] = select(Task)
 
         if status is not None:
             stmt = stmt.where(Task.status == status)
@@ -39,7 +41,10 @@ class TaskRepository:
         if assignee_id is not None:
             stmt = stmt.where(Task.assignee_id == assignee_id)
 
-        return list(self.db.scalars(stmt).all())
+        count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
+        total = self.db.scalar(count_stmt) or 0
+        stmt = stmt.order_by(Task.id.desc()).offset((page - 1) * page_size).limit(page_size)
+        return list(self.db.scalars(stmt).all()), total
 
     def update(self, task: Task) -> Task:
         self.db.add(task)

@@ -4,6 +4,7 @@ import { getDepartments, getUsers } from '../api/references';
 import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
 import { Board } from '../components/Board';
 import { TaskForm } from '../components/TaskForm';
+import { PaginationControls } from '../components/PaginationControls';
 import type { DepartmentOption, UserOption } from '../types/reference';
 import type { Task, TaskFormValues } from '../types/task';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +22,9 @@ export function ManagerTasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [overdueFilter, setOverdueFilter] = useState<'all' | 'true'>('all');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(0);
+  const [total, setTotal] = useState(0);
 
   const loadReferences = async () => {
     setReferencesLoading(true);
@@ -29,7 +33,7 @@ export function ManagerTasksPage() {
       setDepartments(departmentData);
       setUsers(userData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load references');
+      setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu tham chiếu');
     } finally {
       setReferencesLoading(false);
     }
@@ -42,10 +46,14 @@ export function ManagerTasksPage() {
       const data = await getTasks({
         status: statusFilter === 'all' ? undefined : statusFilter,
         overdue: overdueFilter === 'true' ? true : undefined,
+        assigneeId: assigneeFilter === 'all' ? undefined : Number(assigneeFilter),
+        page,
       });
-      setTasks(data);
+      setTasks(data.items);
+      setPages(data.pages);
+      setTotal(data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      setError(err instanceof Error ? err.message : 'Không thể tải công việc');
     } finally {
       setLoading(false);
     }
@@ -57,14 +65,9 @@ export function ManagerTasksPage() {
 
   useEffect(() => {
     void loadTasks();
-  }, [statusFilter, overdueFilter]);
+  }, [statusFilter, assigneeFilter, overdueFilter, page]);
 
   const visibleUsers = useMemo(() => users.filter((item) => item.department_id === user?.department_id), [users, user?.department_id]);
-  const filteredTasks = useMemo(() => {
-    if (assigneeFilter === 'all') return tasks;
-    return tasks.filter((task) => String(task.assignee_id) === assigneeFilter);
-  }, [tasks, assigneeFilter]);
-
   const handleSubmit = async (values: TaskFormValues) => {
     try {
       if (formMode === 'create') {
@@ -77,7 +80,7 @@ export function ManagerTasksPage() {
       setSelectedTask(null);
       setFormMode('create');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save task');
+      setError(err instanceof Error ? err.message : 'Không thể lưu công việc');
     }
   };
 
@@ -90,7 +93,7 @@ export function ManagerTasksPage() {
         setFormMode('create');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete task');
+      setError(err instanceof Error ? err.message : 'Không thể xóa công việc');
     }
   };
 
@@ -108,7 +111,7 @@ export function ManagerTasksPage() {
       await updateTaskStatus(taskId, newStatus);
     } catch (err) {
       setTasks(previousTasks);
-      setError(err instanceof Error ? err.message : 'Failed to move task');
+      setError(err instanceof Error ? err.message : 'Không thể chuyển trạng thái công việc');
     }
   };
 
@@ -119,31 +122,31 @@ export function ManagerTasksPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">Manager</p>
-          <h1>Team Tasks</h1>
-          <p className="subtitle">Create, assign, and monitor tasks within your department.</p>
+          <h1>Công việc của nhóm</h1>
+          <p className="subtitle">Tạo, phân công và theo dõi công việc trong phòng ban.</p>
         </div>
         <div className="toolbar-grid">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">All statuses</option>
-            <option value="todo">Todo</option>
-            <option value="doing">Doing</option>
-            <option value="blocked">Blocked</option>
-            <option value="done">Done</option>
+          <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="todo">Cần làm</option>
+            <option value="doing">Đang làm</option>
+            <option value="blocked">Bị chặn</option>
+            <option value="done">Hoàn thành</option>
           </select>
-          <select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}>
-            <option value="all">All assignees</option>
+          <select value={assigneeFilter} onChange={(event) => { setAssigneeFilter(event.target.value); setPage(1); }}>
+            <option value="all">Tất cả người phụ trách</option>
             {visibleUsers.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.full_name}
               </option>
             ))}
           </select>
-          <select value={overdueFilter} onChange={(event) => setOverdueFilter(event.target.value as 'all' | 'true')}>
-            <option value="all">All deadlines</option>
-            <option value="true">Overdue only</option>
+          <select value={overdueFilter} onChange={(event) => { setOverdueFilter(event.target.value as 'all' | 'true'); setPage(1); }}>
+            <option value="all">Tất cả thời hạn</option>
+            <option value="true">Chỉ công việc quá hạn</option>
           </select>
           <button type="button" className="button-secondary" onClick={() => void Promise.all([loadTasks(), loadReferences()])}>
-            Reload
+            Tải lại
           </button>
         </div>
       </header>
@@ -151,24 +154,22 @@ export function ManagerTasksPage() {
       {error ? <div className="alert alert--error">{error}</div> : null}
 
       <section className="layout">
-        {/* VÙNG CHÍNH: Chứa Bảng Kanban */}
         <div className="layout__main">
           {loading ? (
-            <div className="loading">Loading team tasks...</div>
+            <div className="loading">Đang tải công việc của nhóm...</div>
           ) : (
             <Board
-              tasks={filteredTasks}
+              tasks={tasks}
               onEdit={(task) => {
                 setSelectedTask(task);
                 setFormMode('edit');
               }}
               onDelete={handleDelete}
-              onTaskMove={handleTaskMove} // <--- ĐẶT Ở ĐÂY LÀ ĐÚNG CHUẨN
+              onTaskMove={handleTaskMove}
             />
           )}
         </div>
         
-        {/* VÙNG BÊN: Chứa Form nhập liệu */}
         <aside className="layout__side">
           <TaskForm
             mode={formMode}
@@ -181,11 +182,11 @@ export function ManagerTasksPage() {
               setSelectedTask(null);
               setFormMode('create');
             }}
-            // (Tuyệt đối không nhét onTaskMove hay onDelete vào đây nhé)
           />
-          {formMode === 'create' && initialDepartment ? <p className="hint-text">New tasks will be created inside your department.</p> : null}
+          {formMode === 'create' && initialDepartment ? <p className="hint-text">Công việc mới sẽ được tạo trong phòng ban của bạn.</p> : null}
         </aside>
       </section>
+      <PaginationControls page={page} pages={pages} total={total} onPageChange={setPage} />
     </div>
   );
 }

@@ -134,38 +134,38 @@ def _generate_fallback_reply(message: str, context: dict, user: User) -> str:
     msg_lower = message.lower()
 
     # KPI question
-    if "kpi" in msg_lower or "diem" in msg_lower or "hieu suat" in msg_lower:
+    if "kpi" in msg_lower or "điểm" in msg_lower or "diem" in msg_lower or "hiệu suất" in msg_lower or "hieu suat" in msg_lower:
         if user.role == UserRole.STAFF:
             kpi = context.get("own_kpi_score", 0)
-            return f"KPI thang nay cua ban la {kpi:.1f}. Ban da hoan thanh {context.get('own_done_tasks', 0)} task va co {context.get('own_overdue_tasks', 0)} task qua han."
+            return f"KPI tháng này của bạn là {kpi:.1f}. Bạn đã hoàn thành {context.get('own_done_tasks', 0)} công việc và có {context.get('own_overdue_tasks', 0)} công việc quá hạn."
         elif user.role == UserRole.MANAGER:
             kpi = context.get("team_avg_kpi", 0)
-            return f"KPI trung binh cua team ban la {kpi:.1f}. Team co {context.get('team_size', 0)} thanh vien va {context.get('team_tasks_done', 0)} task da hoan thanh."
+            return f"KPI trung bình của nhóm là {kpi:.1f}. Nhóm có {context.get('team_size', 0)} thành viên và {context.get('team_tasks_done', 0)} công việc đã hoàn thành."
         else:
             kpi = context.get("system_avg_kpi", 0)
-            return f"KPI trung binh he thong la {kpi:.1f}. Toan cong ty co {context.get('total_users', 0)} nhan vien va {context.get('system_tasks_done', 0)} task da hoan thanh."
+            return f"KPI trung bình hệ thống là {kpi:.1f}. Toàn công ty có {context.get('total_users', 0)} nhân viên và {context.get('system_tasks_done', 0)} công việc đã hoàn thành."
 
     # Overdue task question
-    if "qua han" in msg_lower or "task chiem" in msg_lower or "delay" in msg_lower:
+    if "quá hạn" in msg_lower or "qua han" in msg_lower or "delay" in msg_lower:
         if user.role == UserRole.STAFF:
-            return f"Ban hien co {context.get('own_overdue_tasks', 0)} task da qua han. Hay uu tien hoan thanh nhung task nay."
+            return f"Bạn hiện có {context.get('own_overdue_tasks', 0)} công việc đã quá hạn. Hãy ưu tiên hoàn thành các công việc này."
         else:
-            return f"Hien co {context.get('team_overdue', 0) if user.role == UserRole.MANAGER else context.get('system_overdue', 0)} task qua han. Vui long theo doi."
+            return f"Hiện có {context.get('team_overdue', 0) if user.role == UserRole.MANAGER else context.get('system_overdue', 0)} công việc quá hạn. Vui lòng theo dõi."
 
     # Performance question
-    if "hieu suat" in msg_lower or "nhan vien" in msg_lower or "team" in msg_lower:
+    if "hiệu suất" in msg_lower or "hieu suat" in msg_lower or "nhân viên" in msg_lower or "nhan vien" in msg_lower or "team" in msg_lower:
         risk = context.get("risk_users", [])
         top = context.get("top_performers", [])
 
         reply = ""
         if risk:
-            reply += f"Co {len(risk)} nhan vien co KPI thap. "
+            reply += f"Có {len(risk)} nhân viên có KPI thấp. "
         if top:
-            reply += f"Co {len(top)} nhan vien co hieu suat cao. "
+            reply += f"Có {len(top)} nhân viên có hiệu suất cao. "
         if not reply:
-            reply = "Hieu suat team dang on dinh."
+            reply = "Hiệu suất của nhóm đang ổn định."
 
         return reply
 
     # Default
-    return "Toi la tro ly AI cho he thong quan ly cong viec va KPI. Ban co the hoi toi ve: KPI, cong viec qua han, hieu suat team, hoac de xuat hanh dong."
+    return "Tôi là trợ lý cho hệ thống quản lý công việc và KPI. Bạn có thể hỏi về KPI, công việc quá hạn, hiệu suất nhóm hoặc đề xuất hành động."

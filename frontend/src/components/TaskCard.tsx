@@ -44,7 +44,7 @@ export function TaskCard({ task, onEdit, onDelete, isOverlay = false }: TaskCard
         <span className={`badge badge--${task.priority.toLowerCase()}`}>{task.priority}</span>
       </div>
       
-      <p className="task-card__meta">Due: {task.due_date || 'No deadline'}</p>
+      <p className="task-card__meta">Thời hạn: {task.due_date || 'Chưa đặt'}</p>
       
       <div className="task-card__actions">
         <button
@@ -52,7 +52,7 @@ export function TaskCard({ task, onEdit, onDelete, isOverlay = false }: TaskCard
           onClick={() => onEdit(task)}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          Edit
+          Sửa
         </button>
         <button
           type="button"
@@ -60,7 +60,7 @@ export function TaskCard({ task, onEdit, onDelete, isOverlay = false }: TaskCard
           onClick={() => onDelete(task.id)}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          Delete
+          Xóa
         </button>
       </div>
     </article>

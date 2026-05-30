@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.models.task import TaskStatus
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.pagination import PageResponse, build_page
 from app.services.task_service import TaskService
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -23,15 +24,26 @@ def create_task(
     return service.create_task(current_user, payload)
 
 
-@router.get("", response_model=list[TaskRead])
+@router.get("", response_model=PageResponse[TaskRead])
 def list_tasks(
     current_user: Annotated[User, Depends(require_authenticated_user)],
     status: TaskStatus | None = Query(default=None),
     overdue: bool | None = Query(default=None),
+    assignee_id: int | None = Query(default=None, ge=1),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
-) -> list[TaskRead]:
+) -> PageResponse[TaskRead]:
     service = TaskService(db)
-    return service.list_tasks(current_user, status=status, overdue=overdue)
+    tasks, total = service.list_tasks(
+        current_user,
+        status=status,
+        overdue=overdue,
+        assignee_id=assignee_id,
+        page=page,
+        page_size=page_size,
+    )
+    return build_page(tasks, total, page, page_size)
 
 
 @router.get("/{task_id}", response_model=TaskRead)
