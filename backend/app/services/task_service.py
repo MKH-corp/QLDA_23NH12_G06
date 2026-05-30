@@ -10,6 +10,7 @@ from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.department_service import DepartmentService
+from app.services.project_progress_engine import ProjectProgressEngine
 # IMPORT HÀM LOGGING Ở ĐÂY
 from app.utils.logger import log_system_activity
 from app.services.kpi_engine import KpiEngine  # Để trigger KPI recalculation khi hoàn thành hoặc reopen task
@@ -49,6 +50,8 @@ class TaskService:
         if task.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
         created_task = self.repository.create(task)
+        self._recalculate_kpi_for_users(created_task.assignee_id)
+        self._recalculate_project_progress(created_task.project_id)
 
         # --- GHI LOG: TẠO TASK ---
         log_system_activity(
@@ -58,12 +61,27 @@ class TaskService:
         )
         return created_task
 
-    def list_tasks(self, actor: User, status: TaskStatus | None = None, overdue: bool | None = None) -> list[Task]:
+    def list_tasks(
+        self,
+        actor: User,
+        status: TaskStatus | None = None,
+        overdue: bool | None = None,
+        assignee_id: int | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[Task], int]:
         if actor.role == UserRole.ADMIN:
-            return self.repository.list(status=status, overdue=overdue)
+            return self.repository.list(status=status, overdue=overdue, assignee_id=assignee_id, page=page, page_size=page_size)
         if actor.role == UserRole.MANAGER:
-            return self.repository.list(status=status, overdue=overdue, department_id=actor.department_id)
-        return self.repository.list(status=status, overdue=overdue, assignee_id=actor.id)
+            return self.repository.list(
+                status=status,
+                overdue=overdue,
+                department_id=actor.department_id,
+                assignee_id=assignee_id,
+                page=page,
+                page_size=page_size,
+            )
+        return self.repository.list(status=status, overdue=overdue, assignee_id=actor.id, page=page, page_size=page_size)
 
     def get_task_for_actor(self, actor: User, task_id: int) -> Task:
         task = self.get_task_by_id(task_id)
@@ -81,6 +99,8 @@ class TaskService:
     def update_task(self, actor: User, task_id: int, payload: TaskUpdate) -> Task:
         task = self.get_task_for_actor(actor, task_id)
         old_status = task.status
+        old_assignee_id = task.assignee_id
+        old_project_id = task.project_id
 
         if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to update this task")
@@ -106,22 +126,20 @@ class TaskService:
         for field, value in data.items():
             setattr(task, field, value)
         is_completed_now = False
-        is_reopened = False
         if payload.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
             is_completed_now = True
         # ANTI-CHEATING: Phát hiện Reopen
-        elif old_status == TaskStatus.DONE and payload.status in {TaskStatus.TODO, TaskStatus.DOING}:
+        elif old_status == TaskStatus.DONE and payload.status is not None and payload.status != TaskStatus.DONE:
             task.done_at = None
             task.reopen_count = (task.reopen_count or 0) + 1
-            is_reopened = True
 
         updated_task = self.repository.update(task)
 
-        # TRIGGER KPI ENGINE
-        if is_completed_now or is_reopened:
-            kpi_engine = KpiEngine(self.db)
-            kpi_engine.recalculate_monthly_kpi(updated_task.assignee_id)
+        # Recalculate snapshots for both users when assignment changes. This also
+        # covers deadline and weight edits on already completed tasks.
+        self._recalculate_kpi_for_users(old_assignee_id, updated_task.assignee_id)
+        self._recalculate_project_progress(old_project_id, updated_task.project_id)
 
         # --- GHI LOG: CẬP NHẬT HOẶC HOÀN THÀNH TASK ---
         action = "COMPLETE" if is_completed_now else "UPDATE"
@@ -137,11 +155,15 @@ class TaskService:
     def delete_task(self, actor: User, task_id: int) -> None:
         task = self.get_task_for_actor(actor, task_id)
         task_title = task.title
+        assignee_id = task.assignee_id
+        project_id = task.project_id
 
         if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this task")
 
         self.repository.delete(task)
+        self._recalculate_kpi_for_users(assignee_id)
+        self._recalculate_project_progress(project_id)
 
         # --- GHI LOG: XÓA TASK ---
         log_system_activity(
@@ -188,3 +210,15 @@ class TaskService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not allowed to use projects outside your department",
             )
+
+    def _recalculate_kpi_for_users(self, *user_ids: int) -> None:
+        engine = KpiEngine(self.db)
+        for user_id in set(user_ids):
+            engine.recalculate_monthly_kpi(user_id)
+
+    def _recalculate_project_progress(self, *project_ids: int | None) -> None:
+        engine = ProjectProgressEngine(self.db)
+        for project_id in {project_id for project_id in project_ids if project_id is not None}:
+            project = self.db.get(Project, project_id)
+            if project is not None:
+                engine.calculate(project)

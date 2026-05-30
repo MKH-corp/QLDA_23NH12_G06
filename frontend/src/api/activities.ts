@@ -10,5 +10,7 @@ export interface ActivityLog {
   time_ago: string;
 }
 
-export const getRecentActivities = (limit = 10) => 
-  apiRequest<{total: number, data: ActivityLog[]}>(`/activities/recent?limit=${limit}`);
+export const getRecentActivities = (page = 1, pageSize = 10) =>
+  apiRequest<{ total: number; data: ActivityLog[]; page: number; page_size: number; pages: number }>(
+    `/activities/recent?page=${page}&page_size=${pageSize}`,
+  );

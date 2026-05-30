@@ -1,84 +1,145 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from app.models.user import User
+
+from app.models.activity import ActivityLog
 from app.models.department import Department
+from app.models.kpi_snapshot import KpiSnapshot
 from app.models.task import Task
-# from app.models.activity import ActivityLog
+from app.models.user import User, UserRole
 from app.schemas.dashboard import (
-    DashboardStats, DepartmentPerformance, 
-    UserPerformance, ActivityLogResponse, DashboardResponse
+    ActivityLogResponse,
+    DashboardResponse,
+    DashboardStats,
+    DepartmentPerformance,
+    UserPerformance,
 )
-from datetime import datetime
+from app.utils.task_ultis import business_period_key
+
 
 class DashboardService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_dashboard_data(self) -> DashboardResponse:
-        # 1. Lấy thông số tổng quan (Stats)
-        total_users = self.db.query(User).filter(User.is_active == True).count()
-        total_depts = self.db.query(Department).count()
-        completed_tasks = self.db.query(Task).filter(Task.status == "done").count()
-        total_tasks = self.db.query(Task).count()
-        
-        # Tính Average KPI toàn công ty
-        avg_kpi = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    def get_dashboard_data(self, actor: User) -> DashboardResponse:
+        period_key = business_period_key()
 
-        # 2. Tính hiệu suất theo phòng ban (Chart Data)
-        depts = self.db.query(Department).all()
-        dept_charts = []
-        for dept in depts:
-            dept_tasks_total = self.db.query(Task).filter(Task.department_id == dept.id).count()
-            dept_tasks_done = self.db.query(Task).filter(Task.department_id == dept.id, Task.status == "done").count()
-            score = (dept_tasks_done / dept_tasks_total * 100) if dept_tasks_total > 0 else 0
-            dept_charts.append(DepartmentPerformance(id=dept.id, name=dept.name, score=round(score, 1)))
+        users_query = self.db.query(User).filter(User.is_active == True)
+        departments_query = self.db.query(Department)
+        tasks_query = self.db.query(Task)
+        snapshot_stats_query = (
+            self.db.query(
+                func.count(KpiSnapshot.id),
+                func.coalesce(func.avg(KpiSnapshot.total_score), 0),
+            )
+            .join(User, KpiSnapshot.user_id == User.id)
+            .filter(KpiSnapshot.period_key == period_key, User.is_active == True)
+        )
 
-        # 3. Top Nhân viên xuất sắc (Team Performance)
-        users = self.db.query(User).filter(User.is_active == True).all()
-        user_performances = []
-        for user in users:
-            u_total = self.db.query(Task).filter(Task.assignee_id == user.id).count()
-            u_done = self.db.query(Task).filter(Task.assignee_id == user.id, Task.status == "done").count()
-            
-            # Tính KPI: Phạt nhẹ nếu có task quá hạn (logic thực tế)
-            kpi = (u_done / u_total * 100) if u_total > 0 else 0
-            
-            dept_name = next((d.name for d in depts if d.id == user.department_id), "Unknown")
-            
-            user_performances.append(UserPerformance(
+        if actor.role == UserRole.MANAGER:
+            users_query = users_query.filter(User.department_id == actor.department_id)
+            departments_query = departments_query.filter(Department.id == actor.department_id)
+            tasks_query = tasks_query.filter(Task.department_id == actor.department_id)
+            snapshot_stats_query = snapshot_stats_query.filter(User.department_id == actor.department_id)
+
+        total_employees = users_query.count()
+        departments = departments_query.all()
+        completed_tasks = tasks_query.filter(Task.status == "done").count()
+        _, avg_kpi_value = snapshot_stats_query.one()
+        avg_kpi = round(float(avg_kpi_value), 1)
+
+        department_scores_query = (
+            self.db.query(
+                Department.id,
+                Department.name,
+                func.coalesce(func.avg(KpiSnapshot.total_score), 0),
+            )
+            .outerjoin(User, and_(User.department_id == Department.id, User.is_active == True))
+            .outerjoin(
+                KpiSnapshot,
+                and_(KpiSnapshot.user_id == User.id, KpiSnapshot.period_key == period_key),
+            )
+        )
+        if actor.role == UserRole.MANAGER:
+            department_scores_query = department_scores_query.filter(Department.id == actor.department_id)
+        department_charts = [
+            DepartmentPerformance(
+                id=department_id,
+                name=department_name,
+                score=round(float(score), 1),
+            )
+            for department_id, department_name, score in department_scores_query.group_by(Department.id, Department.name).all()
+        ]
+
+        top_performers_query = (
+            self.db.query(KpiSnapshot, User)
+            .join(User, KpiSnapshot.user_id == User.id)
+            .filter(KpiSnapshot.period_key == period_key, User.is_active == True)
+        )
+        if actor.role == UserRole.MANAGER:
+            top_performers_query = top_performers_query.filter(User.department_id == actor.department_id)
+
+        department_names = {department.id: department.name for department in departments}
+        top_performers = [
+            UserPerformance(
                 id=user.id,
                 full_name=user.full_name,
                 email=user.email,
-                department_name=dept_name,
-                tasks_completed=u_done,
-                kpi_score=round(kpi, 1)
-            ))
-        
-        # Sắp xếp top 5 KPI cao nhất
-        user_performances.sort(key=lambda x: x.kpi_score, reverse=True)
-        top_performers = user_performances[:5]
-
-        # 4. Mock Activity Log (Vì mình chưa update các hàm Create/Update Task để ghi log)
-        # Trong thực tế, bạn sẽ query từ bảng ActivityLog
-        recent_activities = [
-            ActivityLogResponse(id=1, action="task", description="Trần Minh Bình đã hoàn thành task phân tích dữ liệu", time_ago="10 mins ago"),
-            ActivityLogResponse(id=2, action="kpi", description="Hệ thống tự động cập nhật KPI tháng 5", time_ago="2 hours ago"),
-            ActivityLogResponse(id=3, action="system", description="Đã thêm 2 nhân viên mới vào phòng Kỹ thuật", time_ago="Yesterday")
+                department_name=department_names.get(user.department_id, "Unknown"),
+                tasks_completed=snapshot.tasks_completed,
+                kpi_score=round(snapshot.total_score, 1),
+            )
+            for snapshot, user in top_performers_query.order_by(KpiSnapshot.total_score.desc()).limit(5).all()
         ]
 
-        # 5. Sinh AI Insights dựa trên Data thật
-        best_dept = max(dept_charts, key=lambda x: x.score) if dept_charts else None
-        ai_insights = f"Hệ thống phát hiện năng suất toàn công ty đạt {round(avg_kpi,1)}%. Phòng {best_dept.name if best_dept else ''} đang có hiệu suất cao nhất. Cần tập trung đẩy nhanh tiến độ các Task đang bị Blocked."
+        recent_activities_query = self.db.query(ActivityLog)
+        if actor.role == UserRole.MANAGER:
+            recent_activities_query = (
+                recent_activities_query
+                .join(User, ActivityLog.user_id == User.id)
+                .filter(User.department_id == actor.department_id)
+            )
+        recent_activities = [
+            ActivityLogResponse(
+                id=log.id,
+                action=log.action_type,
+                description=log.description,
+                time_ago=self._format_time_ago(log.created_at),
+            )
+            for log in recent_activities_query.order_by(ActivityLog.created_at.desc()).limit(5).all()
+        ]
+
+        best_department = max(department_charts, key=lambda item: item.score) if department_charts else None
+        insights = (
+            f"Năng suất trung bình đạt {avg_kpi}%. "
+            f"Phòng {best_department.name if best_department else 'N/A'} đang có hiệu suất cao nhất."
+        )
 
         return DashboardResponse(
             stats=DashboardStats(
-                total_employees=total_users,
-                active_departments=total_depts,
+                total_employees=total_employees,
+                active_departments=len(departments),
                 completed_tasks=completed_tasks,
-                avg_kpi=round(avg_kpi, 1)
+                avg_kpi=avg_kpi,
             ),
-            department_charts=dept_charts,
+            department_charts=department_charts,
             top_performers=top_performers,
             recent_activities=recent_activities,
-            ai_insights=ai_insights
+            ai_insights=insights,
         )
+
+    @staticmethod
+    def _format_time_ago(created_at: datetime | None) -> str:
+        if created_at is None:
+            return ""
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        seconds = (datetime.now(timezone.utc) - created_at).total_seconds()
+        if seconds < 60:
+            return "Vừa xong"
+        if seconds < 3600:
+            return f"{int(seconds // 60)} phút trước"
+        if seconds < 86400:
+            return f"{int(seconds // 3600)} giờ trước"
+        return f"{int(seconds // 86400)} ngày trước"

@@ -6,8 +6,6 @@ ProjectRepository — tất cả query được tối ưu:
 """
 from __future__ import annotations
 
-from datetime import date
-
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -16,6 +14,7 @@ from app.models.project import (
     ProjectMilestone, ProjectStatusHistory,
 )
 from app.models.task import Task, TaskStatus
+from app.utils.task_ultis import business_today
 
 
 class ProjectRepository:
@@ -119,7 +118,7 @@ class ProjectRepository:
                 Task.project_id == project_id,
                 Task.status != TaskStatus.DONE,
                 Task.deadline.isnot(None),
-                Task.deadline < date.today(),
+                Task.deadline < business_today(),
             )
             .scalar() or 0
         )

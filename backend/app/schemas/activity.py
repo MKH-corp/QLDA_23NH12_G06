@@ -19,3 +19,6 @@ class ActivityLogResponse(BaseModel):
 class ActivityListResponse(BaseModel):
     total: int
     data: List[ActivityLogResponse]
+    page: int
+    page_size: int
+    pages: int

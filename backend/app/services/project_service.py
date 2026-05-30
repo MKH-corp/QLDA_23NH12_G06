@@ -12,7 +12,7 @@ Nguyên tắc:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -35,6 +35,7 @@ from app.schemas.project import (
 )
 from app.services.project_progress_engine import ProjectProgressEngine
 from app.utils.logger import log_system_activity
+from app.utils.task_ultis import business_today, completion_business_date
 
 
 class ProjectService:
@@ -165,19 +166,20 @@ class ProjectService:
         # Xử lý đổi status riêng (validate transition)
         if "status" in data:
             new_status = ProjectStatus(data["status"])
-            self._validate_transition(project, new_status)
-            old_status = project.status
-            project.status = new_status.value
-            self._write_status_history(project_id, old_status,
-                                       new_status.value, actor.id, reason)
+            if new_status.value != project.status:
+                self._validate_transition(project, new_status)
+                old_status = project.status
+                project.status = new_status.value
+                self._write_status_history(project_id, old_status,
+                                           new_status.value, actor.id, reason)
 
-            # Archive
-            if new_status == ProjectStatus.ARCHIVED:
-                project.archived_at = datetime.now(timezone.utc)
+                # Archive
+                if new_status == ProjectStatus.ARCHIVED:
+                    project.archived_at = datetime.now(timezone.utc)
 
-            # KPI trigger khi COMPLETED
-            if new_status == ProjectStatus.COMPLETED:
-                self._trigger_completion_kpi(project_id, actor)
+                # KPI trigger khi COMPLETED
+                if new_status == ProjectStatus.COMPLETED:
+                    self._trigger_completion_kpi(project_id, actor)
 
             data.pop("status")
 
@@ -347,7 +349,7 @@ class ProjectService:
 
         overdue_projects = [
             p for p in projects
-            if p.end_date and p.end_date < date.today()
+            if p.end_date and p.end_date < business_today()
             and p.status not in ("COMPLETED", "CANCELLED", "ARCHIVED")
         ]
         avg_progress = (
@@ -402,6 +404,8 @@ class ProjectService:
             current = ProjectStatus(project.status)
         except ValueError:
             return  # status cũ không hợp lệ, cho phép đổi
+        if new_status == current:
+            return
         allowed = ALLOWED_TRANSITIONS.get(current, set())
         if new_status not in allowed:
             raise HTTPException(
@@ -447,15 +451,17 @@ class ProjectService:
             ProjectMember.project_id == project.id
         ).count()
         is_overdue = bool(
-            project.end_date and project.end_date < date.today()
+            project.end_date and project.end_date < business_today()
             and project.status not in ("COMPLETED", "CANCELLED", "ARCHIVED")
         )
         return ProjectListItem(
-            id=project.id, name=project.name, code=project.code,
+            id=project.id, name=project.name, description=project.description,
+            code=project.code,
             status=project.status,
             priority=project.priority.value if project.priority else "MEDIUM",
             progress_percentage=project.progress_percentage or 0,
             start_date=project.start_date, end_date=project.end_date,
+            department_id=project.department_id, manager_id=project.manager_id,
             department_name=project.department.name if project.department else "",
             manager_name=project.manager.full_name if project.manager else "",
             total_tasks=counts["total"],
@@ -469,7 +475,7 @@ class ProjectService:
 
     def _build_analytics(self, project: Project, counts: dict,
                           engine: ProjectProgressEngine) -> ProjectAnalytics:
-        today       = date.today()
+        today       = business_today()
         total       = counts["total"]
         completed   = counts["completed"]
         on_time_tasks = self.db.query(Task).filter(
@@ -480,7 +486,7 @@ class ProjectService:
         ).all()
         on_time_count = sum(
             1 for t in on_time_tasks
-            if t.done_at and t.deadline and t.done_at.date() <= t.deadline
+            if t.done_at and t.deadline and completion_business_date(t.done_at) <= t.deadline
         )
         on_time_rate = (on_time_count / completed * 100) if completed else 0
 
@@ -559,7 +565,7 @@ class ProjectService:
         completed = sum(1 for t in tasks if t.status == TaskStatus.DONE)
         overdue   = sum(
             1 for t in tasks
-            if t.status != TaskStatus.DONE and t.deadline and t.deadline < date.today()
+            if t.status != TaskStatus.DONE and t.deadline and t.deadline < business_today()
         )
         milestones = self.db.query(ProjectMilestone).filter(
             ProjectMilestone.project_id == project_id
@@ -599,7 +605,7 @@ class ProjectService:
                 pass
 
     def _task_to_summary(self, task: Task) -> TaskSummary:
-        today = date.today()
+        today = business_today()
         from app.utils.task_ultis import infer_priority
         return TaskSummary(
             id=task.id, title=task.title, status=task.status,

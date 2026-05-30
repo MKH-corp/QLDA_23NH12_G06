@@ -1,5 +1,5 @@
 from sqlalchemy import Select, select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.user import User
 
@@ -41,7 +41,7 @@ class UserRepository:
         limit: int = 100
     ) -> tuple[list[User], int]:
         """Search users by name or email with optional department filter."""
-        stmt: Select[tuple[User]] = select(User)
+        stmt: Select[tuple[User]] = select(User).options(joinedload(User.department))
         
         if search_query:
             search_term = f"%{search_query}%"

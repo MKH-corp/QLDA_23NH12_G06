@@ -8,12 +8,14 @@ from app.schemas.kpi import KpiSnapshotResponse, KpiRankingResponse
 from datetime import datetime
 from app.api.deps import get_db, require_authenticated_user
 from fastapi import HTTPException
+from app.services.kpi_engine import KpiEngine
+from app.utils.task_ultis import business_period_key
 
 router = APIRouter()
 
 @router.get("/me", response_model=KpiSnapshotResponse)
 def get_my_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
-    period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+    period_key = business_period_key()
     snapshot = db.query(KpiSnapshot).filter(
         KpiSnapshot.user_id == current_user.id,
         KpiSnapshot.period_key == period_key
@@ -26,7 +28,7 @@ def get_my_kpi(db=Depends(get_db), current_user: User = Depends(require_authenti
 @router.get("/team", response_model=list[KpiRankingResponse])
 def get_team_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
     """Role-based visibility: Admin thấy hết, Manager thấy team mình"""
-    period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+    period_key = business_period_key()
     
     query = db.query(KpiSnapshot, User).join(User, KpiSnapshot.user_id == User.id)\
               .filter(KpiSnapshot.period_key == period_key)
@@ -50,23 +52,85 @@ def get_user_kpi(user_id: int, db=Depends(get_db), current_user: User = Depends(
     target_user = db.query(User).filter(User.id == user_id).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Bảo mật: Kiểm tra quyền truy cập
     if current_user.role == UserRole.STAFF and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Không được phép xem KPI người khác")
     if current_user.role == UserRole.MANAGER and target_user.department_id != current_user.department_id:
         raise HTTPException(status_code=403, detail="Không được phép xem KPI của phòng ban khác")
 
-    period_key = f"{datetime.now().year}-{datetime.now().month:02d}"
+    period_key = business_period_key()
     snapshot = db.query(KpiSnapshot).filter(
         KpiSnapshot.user_id == user_id,
         KpiSnapshot.period_key == period_key
     ).first()
-    
+
     # Fallback nếu nhân viên chưa có điểm
-    if not snapshot: 
+    if not snapshot:
         return KpiSnapshotResponse(
-            user_id=user_id, period_type="MONTHLY", period_key=period_key, 
+            user_id=user_id, period_type="MONTHLY", period_key=period_key,
             total_score=0, tasks_completed=0, tasks_overdue=0, breakdown={}, updated_at=datetime.now()
         )
     return snapshot
+
+
+@router.post("/recalculate/me")
+def recalculate_my_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
+    """Staff recalculate their own KPI"""
+    engine = KpiEngine(db)
+    snapshot = engine.recalculate_monthly_kpi(current_user.id)
+    return {
+        "message": "KPI recalculated successfully",
+        "total_score": snapshot.total_score,
+        "tasks_completed": snapshot.tasks_completed,
+        "tasks_overdue": snapshot.tasks_overdue
+    }
+
+
+@router.post("/recalculate/team")
+def recalculate_team_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
+    """Manager/Admin recalculate team KPI"""
+    if current_user.role == UserRole.STAFF:
+        raise HTTPException(status_code=403, detail="Staff not allowed to recalculate team KPI")
+
+    engine = KpiEngine(db)
+
+    if current_user.role == UserRole.MANAGER:
+        # Manager: recalculate team in their department
+        team_users = db.query(User).filter(
+            User.department_id == current_user.department_id,
+            User.is_active == True
+        ).all()
+    else:
+        # Admin: recalculate all active users
+        team_users = db.query(User).filter(User.is_active == True).all()
+
+    count = 0
+    for user in team_users:
+        engine.recalculate_monthly_kpi(user.id)
+        count += 1
+
+    return {
+        "message": f"Team KPI recalculated successfully",
+        "users_updated": count
+    }
+
+
+@router.post("/recalculate/all")
+def recalculate_all_kpi(db=Depends(get_db), current_user: User = Depends(require_authenticated_user)):
+    """Admin only: recalculate all KPI"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Only admin can recalculate all KPI")
+
+    engine = KpiEngine(db)
+    all_users = db.query(User).filter(User.is_active == True).all()
+
+    count = 0
+    for user in all_users:
+        engine.recalculate_monthly_kpi(user.id)
+        count += 1
+
+    return {
+        "message": "All KPI recalculated successfully",
+        "users_updated": count
+    }

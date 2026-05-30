@@ -49,8 +49,8 @@ Trên **Windows**, nếu lệnh `python3` không có, có thể dùng `python`.
 ## 3. Clone project
 
 ```bash
-git clone https://github.com/hurzpoet261/BTN-QLDA-Gr06.git
-cd BTN-QLDA-Gr06
+git clone https://github.com/MKH-corp/QLDA_23NH12_G06.git
+cd QLDA_23NH12_G06
 ```
 
 Nếu thư mục local của bạn đang tên khác như `QLDA_23NH12_G06` thì cứ dùng bình thường, không bắt buộc phải trùng tên.
@@ -157,6 +157,14 @@ Kết quả mong đợi:
 {"status":"ok"}
 ```
 
+### Chạy test backend
+
+```bash
+cd backend
+python -m unittest discover -s tests -v
+python -m alembic heads
+```
+
 ---
 
 ## 6. Chạy frontend
@@ -201,7 +209,15 @@ File mẫu:
 ```env
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/work_kpi_db
 APP_NAME=Work & KPI Management API
+BUSINESS_TIMEZONE=Asia/Ho_Chi_Minh
+NOTIFICATION_SCHEDULER_ENABLED=true
+NOTIFICATION_SCHEDULER_INTERVAL_SECONDS=300
+OPENAI_CHAT_ENABLED=true
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
 ```
+
+`OPENAI_API_KEY` chỉ được cấu hình trong `backend/.env`. Không đưa API key vào frontend hoặc commit lên Git.
 
 ### Frontend - `frontend/.env`
 File mẫu:

@@ -73,7 +73,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
       await onSubmit(formData as any);
       onClose();
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || 'Đã xảy ra lỗi');
     }
   };
 
@@ -98,7 +98,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
       }}>
         <h2 style={{ margin: '0 0 24px', color: '#1e3a8a' }}>
-          {isEditMode ? '✏️ Edit Employee' : '➕ Add New Employee'}
+          {isEditMode ? 'Sửa nhân viên' : 'Thêm nhân viên'}
         </h2>
 
         {error && (
@@ -118,7 +118,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
           {/* Full Name */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>
-              Full Name *
+              Họ tên *
             </label>
             <input
               type="text"
@@ -164,7 +164,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
           {/* Password */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>
-              Password {!isEditMode && '*'}
+              Mật khẩu {!isEditMode && '*'}
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -182,7 +182,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
                   boxSizing: 'border-box',
                   paddingRight: '40px',
                 }}
-                placeholder={isEditMode ? 'Leave empty to keep current password' : 'Enter password'}
+                placeholder={isEditMode ? 'Để trống nếu không đổi mật khẩu' : 'Nhập mật khẩu'}
               />
               <button
                 type="button"
@@ -206,7 +206,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
           {/* Role */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>
-              Role *
+              Vai trò *
             </label>
             <select
               name="role"
@@ -230,7 +230,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
           {/* Department */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>
-              Department *
+              Phòng ban *
             </label>
             <select
               name="department_id"
@@ -261,7 +261,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
               style={{ marginRight: '8px', width: '18px', height: '18px', cursor: 'pointer' }}
             />
             <label style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px', cursor: 'pointer' }}>
-              Active
+              Đang hoạt động
             </label>
           </div>
 
@@ -283,7 +283,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
               }}
               disabled={isLoading}
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
@@ -301,7 +301,7 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
               }}
               disabled={isLoading}
             >
-              {isLoading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
+              {isLoading ? 'Đang lưu...' : isEditMode ? 'Cập nhật' : 'Tạo mới'}
             </button>
           </div>
         </form>

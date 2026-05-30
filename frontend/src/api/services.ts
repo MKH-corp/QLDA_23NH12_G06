@@ -1,8 +1,10 @@
 import { apiRequest } from './client';
+import type { PageResponse } from './pagination';
 
 // --- TYPES ---
 export interface Project { id: number; name: string; status: string; progress: number; total_tasks: number; }
 export interface Notification { id: number; title: string; message: string; type: string; is_read: boolean; created_at: string; }
+export interface NotificationPage extends PageResponse<Notification> { unread_count: number; }
 export interface KpiRecord { user_id: number; name: string; current_month_kpi: number; tasks_done: number; }
 
 // --- PROJECTS API ---
@@ -14,9 +16,9 @@ export const deleteProject = (id: number) => apiRequest(`/projects/${id}`, { met
 export const getKpiAnalytics = () => apiRequest<KpiRecord[]>('/kpi/analytics');
 
 // --- NOTIFICATIONS API ---
-export const getNotifications = () => apiRequest<Notification[]>('/notifications/');
+export const getNotifications = (page = 1, pageSize = 10) =>
+  apiRequest<NotificationPage>(`/notifications/?page=${page}&page_size=${pageSize}`);
 export const markNotificationAsRead = (id: number) => apiRequest(`/notifications/${id}/read`, { method: 'PUT' });
-
 // --- USERS API ---
 export interface User { 
   id: number; 
@@ -47,8 +49,8 @@ export interface UserUpdatePayload {
   is_active?: boolean;
 }
 
-export const getUsers = (search: string = '') => 
-  apiRequest<User[]>(`/users/?skip=0&limit=100&search=${encodeURIComponent(search)}`);
+export const getUsers = (search: string = '', page = 1, pageSize = 20) =>
+  apiRequest<PageResponse<User>>(`/users/?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(search)}`);
 
 export const createUser = (data: UserCreatePayload) => 
   apiRequest<User>('/users/', { method: 'POST', body: JSON.stringify(data) });

@@ -12,7 +12,7 @@ export function ProtectedRoute({ roles }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (loading) {
-    return <div className="screen-center">Loading session...</div>;
+    return <div className="screen-center">Đang tải phiên đăng nhập...</div>;
   }
 
   if (!isAuthenticated || !user) {

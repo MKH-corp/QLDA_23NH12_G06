@@ -7,6 +7,7 @@ from app.api.deps import require_admin, require_authenticated_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.pagination import PageResponse, build_page
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -32,20 +33,26 @@ def create_user(
 }
 
 
-@router.get("", response_model=list[UserRead])
+@router.get("", response_model=PageResponse[UserRead])
 def list_users(
     current_user: Annotated[User, Depends(require_authenticated_user)],
     search: str = Query("", description="Search by name or email"),
-    skip: int = Query(0, ge=0, description="Number of users to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of users to return"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-) -> list[UserRead]:
+) -> PageResponse[UserRead]:
     service = UserService(db)
-    users, _ = service.search_users(current_user, search_query=search, skip=skip, limit=limit)
-    return [
+    users, total = service.search_users(
+        current_user,
+        search_query=search,
+        skip=(page - 1) * page_size,
+        limit=page_size,
+    )
+    items = [
         UserRead.model_validate({**u.__dict__, "department_name": u.department.name})
         for u in users
     ]
+    return build_page(items, total, page, page_size)
 
 
 @router.get("/{user_id}", response_model=UserRead)

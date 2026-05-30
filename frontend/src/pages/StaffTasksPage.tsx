@@ -4,6 +4,7 @@ import { getDepartments, getUsers } from '../api/references';
 import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
 import { Board } from '../components/Board';
 import { TaskForm } from '../components/TaskForm';
+import { PaginationControls } from '../components/PaginationControls';
 import type { DepartmentOption, UserOption } from '../types/reference';
 import type { Task, TaskFormValues } from '../types/task';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +21,9 @@ export function StaffTasksPage() {
   const [loading, setLoading] = useState(true);
   const [referencesLoading, setReferencesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(0);
+  const [total, setTotal] = useState(0);
 
   const loadReferences = async () => {
     setReferencesLoading(true);
@@ -28,7 +32,7 @@ export function StaffTasksPage() {
       setDepartments(departmentData);
       setUsers(userData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load references');
+      setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu tham chiếu');
     } finally {
       setReferencesLoading(false);
     }
@@ -38,11 +42,13 @@ export function StaffTasksPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getTasks({});
-      const myTasks = user?.id ? data.filter((task) => task.assignee_id === user.id) : data;
+      const data = await getTasks({ page });
+      const myTasks = user?.id ? data.items.filter((task) => task.assignee_id === user.id) : data.items;
       setTasks(myTasks);
+      setPages(data.pages);
+      setTotal(data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      setError(err instanceof Error ? err.message : 'Không thể tải công việc');
     } finally {
       setLoading(false);
     }
@@ -56,7 +62,7 @@ export function StaffTasksPage() {
     if (user?.id) {
       void loadTasks();
     }
-  }, [user?.id]);
+  }, [user?.id, page]);
 
   const visibleUsers = useMemo(
     () => users.filter((item) => item.department_id === user?.department_id),
@@ -71,7 +77,7 @@ export function StaffTasksPage() {
       }
       setSelectedTask(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save task');
+      setError(err instanceof Error ? err.message : 'Không thể lưu công việc');
     }
   };
 
@@ -83,7 +89,7 @@ export function StaffTasksPage() {
         setSelectedTask(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete task');
+      setError(err instanceof Error ? err.message : 'Không thể xóa công việc');
     }
   };
 
@@ -100,7 +106,7 @@ export function StaffTasksPage() {
       await updateTaskStatus(taskId, newStatus);
     } catch (err) {
       setTasks(previousTasks);
-      setError(err instanceof Error ? err.message : 'Failed to move task');
+      setError(err instanceof Error ? err.message : 'Không thể chuyển trạng thái công việc');
     }
   };
 
@@ -109,30 +115,25 @@ export function StaffTasksPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">Staff</p>
-          <h1>My Tasks</h1>
-          <p className="subtitle">View and manage tasks assigned to you.</p>
+          <h1>Công việc của tôi</h1>
+          <p className="subtitle">Theo dõi và cập nhật các công việc được giao.</p>
         </div>
         <div className="toolbar-grid">
           <button type="button" className="button-secondary" onClick={() => void loadTasks()}>
-            Reload
+            Tải lại
           </button>
         </div>
       </header>
 
       {error ? <div className="alert alert--error">{error}</div> : null}
 
-      {/* 
-        CHÌA KHÓA NẰM Ở ĐÂY: 
-        Nếu không có task nào được chọn, ta đè CSS 'display: block' để xóa bỏ chia cột. 
-        Bảng Kanban sẽ rộng 100% không bị che khuất! 
-      */}
       <section 
         className="layout" 
         style={!selectedTask ? { display: 'block' } : undefined}
       >
         <div className="layout__main">
           {loading ? (
-            <div className="loading">Loading your tasks...</div>
+            <div className="loading">Đang tải công việc...</div>
           ) : (
             <Board
               tasks={tasks}
@@ -146,7 +147,6 @@ export function StaffTasksPage() {
           )}
         </div>
 
-        {/* Form sẽ chỉ render (và chiếm chỗ) khi có selectedTask */}
         {selectedTask && (
           <aside className="layout__side">
             <TaskForm
@@ -163,6 +163,7 @@ export function StaffTasksPage() {
           </aside>
         )}
       </section>
+      <PaginationControls page={page} pages={pages} total={total} onPageChange={setPage} />
     </div>
   );
 }

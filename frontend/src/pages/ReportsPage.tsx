@@ -4,27 +4,27 @@ import { useFetch } from '../hooks/useApi';
 export function ReportsPage() {
   const { data: reportData, loading, error } = useFetch(getProductivityReport);
 
-  if (loading) return <div className="screen-center"><div className="loading">Generating Reports...</div></div>;
-  if (error) return <div className="error-state">Error: {error}</div>;
+  if (loading) return <div className="screen-center"><div className="loading">Đang tạo báo cáo...</div></div>;
+  if (error) return <div className="error-state">Lỗi: {error}</div>;
 
   return (
     <div className="page-container">
       <header style={{ marginBottom: '24px' }}>
-        <h2 style={{ color: '#1e3a8a' }}>📈 Productivity Reports</h2>
-        <p style={{ color: '#64748b' }}>Department level analytics and task tracking</p>
+        <h2 style={{ color: '#1e3a8a' }}>Báo cáo hiệu suất</h2>
+        <p style={{ color: '#64748b' }}>Phân tích theo phòng ban và tiến độ công việc.</p>
       </header>
 
       <div className="dashboard-layout">
         <div className="glass-panel" style={{ flex: 2 }}>
-          <h2 className="panel-title">Department Productivity Comparison</h2>
+          <h2 className="panel-title">So sánh hiệu suất phòng ban</h2>
           <table className="modern-table">
             <thead>
               <tr>
-                <th>Department</th>
-                <th>Total Tasks</th>
-                <th>Completed</th>
-                <th>Overdue</th>
-                <th>Productivity Score</th>
+                <th>Phòng ban</th>
+                <th>Tổng công việc</th>
+                <th>Hoàn thành</th>
+                <th>Quá hạn</th>
+                <th>Hiệu suất</th>
               </tr>
             </thead>
             <tbody>
@@ -49,11 +49,11 @@ export function ReportsPage() {
         </div>
 
         <div className="glass-panel" style={{ flex: 1, background: 'linear-gradient(135deg, #0f172a, #1e293b)', color: 'white' }}>
-          <h2 className="panel-title" style={{ color: 'white' }}>💡 Insights</h2>
+          <h2 className="panel-title" style={{ color: 'white' }}>Insight</h2>
           <div style={{ marginTop: '20px', lineHeight: '1.6', fontSize: '14px', color: '#cbd5e1' }}>
-            <p><strong>Top Performer:</strong> {reportData?.[0]?.department_name} is leading with a {reportData?.[0]?.productivity_score}% completion rate.</p>
+            <p><strong>Dẫn đầu:</strong> {reportData?.[0]?.department_name} đang có tỷ lệ hoàn thành {reportData?.[0]?.productivity_score}%.</p>
             <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }}/>
-            <p><strong>Attention Needed:</strong> Ensure teams with high overdue tasks re-evaluate their current sprint workload.</p>
+            <p><strong>Cần theo dõi:</strong> Các nhóm có nhiều công việc quá hạn nên rà soát lại khối lượng sprint hiện tại.</p>
           </div>
         </div>
       </div>

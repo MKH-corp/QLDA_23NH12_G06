@@ -126,12 +126,15 @@ class ProjectListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
+    description: str | None
     code: str | None
     status: str
     priority: str
     progress_percentage: float
     start_date: date | None
     end_date: date | None
+    department_id: int | None = None
+    manager_id: int | None    = None
     department_name: str = ""
     manager_name: str    = ""
     total_tasks: int     = 0

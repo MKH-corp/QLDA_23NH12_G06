@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { getUsers, createUser, updateUser, deleteUser, type User, type UserCreatePayload, type UserUpdatePayload } from '../api/services';
 import { useFetch } from '../hooks/useApi';
 import { DataTable } from '../components/DataTable';
 import { EmployeeForm } from '../components/EmployeeForm';
 import { getDepartments } from '../api/references';
 import type { DepartmentOption } from '../types/reference';
+import { PaginationControls } from '../components/PaginationControls';
 
 export function EmployeeManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,10 +14,11 @@ export function EmployeeManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [page, setPage] = useState(1);
 
   const { data: users, loading, error, refetch } = useFetch(
-    () => getUsers(searchTerm),
-    [searchTerm]
+    () => getUsers(searchTerm, page),
+    [searchTerm, page]
   );
 
   // Load departments on mount
@@ -46,10 +48,10 @@ export function EmployeeManagementPage() {
     try {
       if (editingUser) {
         await updateUser(editingUser.id, formData as UserUpdatePayload);
-        setSuccessMessage('✅ Employee updated successfully!');
+        setSuccessMessage('Đã cập nhật nhân viên.');
       } else {
         await createUser(formData as UserCreatePayload);
-        setSuccessMessage('✅ Employee created successfully!');
+        setSuccessMessage('Đã tạo nhân viên.');
       }
       
       // Refresh the list
@@ -67,30 +69,30 @@ export function EmployeeManagementPage() {
   };
 
   const handleDelete = async (user: User) => {
-    if (!window.confirm(`Are you sure you want to delete ${user.full_name}?`)) {
+    if (!window.confirm(`Bạn có chắc muốn xóa ${user.full_name}?`)) {
       return;
     }
 
     try {
       await deleteUser(user.id);
-      setSuccessMessage('✅ Employee deleted successfully!');
+      setSuccessMessage('Đã xóa nhân viên.');
       await refetch();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
       console.error('Delete error:', err);
-      alert(`Failed to delete employee: ${err.message}`);
+      alert(`Không thể xóa nhân viên: ${err.message}`);
     }
   };
 
   const handleToggleStatus = async (user: User) => {
     try {
       await updateUser(user.id, { is_active: !user.is_active });
-      setSuccessMessage(user.is_active ? '✅ Employee disabled!' : '✅ Employee enabled!');
+      setSuccessMessage(user.is_active ? 'Đã vô hiệu hóa nhân viên.' : 'Đã kích hoạt nhân viên.');
       await refetch();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
       console.error('Status toggle error:', err);
-      alert(`Failed to update employee status: ${err.message}`);
+      alert(`Không thể cập nhật trạng thái nhân viên: ${err.message}`);
     }
   };
 
@@ -115,8 +117,8 @@ export function EmployeeManagementPage() {
       {/* Header */}
       <header className="page-header glass-panel admin-topbar" style={{ marginBottom: '24px' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#1e3a8a' }}>👥 Employee Management</h2>
-          <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Manage your workforce and assign roles</p>
+          <h2 style={{ margin: 0, color: '#1e3a8a' }}>Quản lý nhân sự</h2>
+          <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Quản lý tài khoản, phòng ban và phân quyền.</p>
         </div>
         
         <div style={{ display: 'flex', gap: '16px' }}>
@@ -124,9 +126,9 @@ export function EmployeeManagementPage() {
             <span>🔍</span>
             <input 
               type="text" 
-              placeholder="Search by name or email..." 
+              placeholder="Tìm theo tên hoặc email..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             />
           </div>
           <button 
@@ -134,7 +136,7 @@ export function EmployeeManagementPage() {
             onClick={handleAddClick}
             style={{ cursor: 'pointer' }}
           >
-            + Add Employee
+            + Thêm nhân viên
           </button>
         </div>
       </header>
@@ -149,20 +151,20 @@ export function EmployeeManagementPage() {
           borderRadius: '8px',
           marginBottom: '16px'
         }}>
-          ❌ Error loading data: {error}
+          Không thể tải dữ liệu: {error}
         </div>
       )}
 
       {/* Data Table */}
       <div className="glass-panel">
         <DataTable
-          title="All Employees"
-          items={users || []}
-          emptyText={loading ? "Loading employees..." : "No employees found matching your search."}
+          title="Danh sách nhân viên"
+          items={users?.items || []}
+          emptyText={loading ? "Đang tải nhân viên..." : "Không tìm thấy nhân viên phù hợp."}
           columns={[
             { 
               key: 'user', 
-              title: 'Employee', 
+              title: 'Nhân viên',
               render: (u) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'grid', placeItems: 'center', fontWeight: 'bold' }}>
@@ -177,15 +179,15 @@ export function EmployeeManagementPage() {
             },
             { 
               key: 'department', 
-              title: 'Department', 
+              title: 'Phòng ban',
               render: (u) => (
                 <span style={{ fontSize: '13px', color: '#475569' }}>
                   {u.department_name || `Dept ${u.department_id}`}
                 </span>
               )
             },
-            { key: 'role', title: 'Role', render: (u) => <span className={`badge badge--${u.role}`}>{u.role.toUpperCase()}</span> },
-            { key: 'status', title: 'Status', render: (u) => (
+            { key: 'role', title: 'Vai trò', render: (u) => <span className={`badge badge--${u.role}`}>{u.role.toUpperCase()}</span> },
+            { key: 'status', title: 'Trạng thái', render: (u) => (
               <span 
                 style={{ 
                   display: 'flex', 
@@ -196,15 +198,15 @@ export function EmployeeManagementPage() {
                   cursor: 'pointer'
                 }}
                 onClick={() => handleToggleStatus(u)}
-                title="Click to toggle status"
+                title="Nhấn để đổi trạng thái"
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: u.is_active ? '#10b981' : '#ef4444' }}></span>
-                {u.is_active ? 'Active' : 'Disabled'}
+                {u.is_active ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}
               </span>
             )},
             { 
               key: 'actions', 
-              title: 'Actions', 
+              title: 'Thao tác',
               render: (u) => (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button 
@@ -212,7 +214,7 @@ export function EmployeeManagementPage() {
                     style={{ padding: '6px 12px', cursor: 'pointer' }}
                     onClick={() => handleEditClick(u)}
                   >
-                    ✏️ Edit
+                    Sửa
                   </button>
                   <button 
                     className="btn-outline" 
@@ -224,7 +226,7 @@ export function EmployeeManagementPage() {
                     }}
                     onClick={() => handleDelete(u)}
                   >
-                    🗑️ Delete
+                    Xóa
                   </button>
                 </div>
               )
@@ -232,6 +234,7 @@ export function EmployeeManagementPage() {
           ]}
         />
       </div>
+      {users ? <PaginationControls page={users.page} pages={users.pages} total={users.total} onPageChange={setPage} /> : null}
 
       {/* Employee Form Modal */}
       <EmployeeForm
