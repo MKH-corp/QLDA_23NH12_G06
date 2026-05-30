@@ -153,8 +153,8 @@ class NotificationEngine:
             # Only alert once per period
             existing = self.db.query(Notification).filter(
                 Notification.user_id == user_id,
-                Notification.metadata_json["notification_type"].astext == "excellent_performance",
-                Notification.metadata_json["period_key"].astext == self.period_key,
+                Notification.metadata_json["notification_type"].as_string() == "excellent_performance",
+                Notification.metadata_json["period_key"].as_string() == self.period_key,
             ).first()
 
             if not existing:
@@ -185,7 +185,7 @@ class NotificationEngine:
             Notification.user_id == user_id,
             Notification.created_at >= today_start,
             Notification.created_at < tomorrow_start,
-            Notification.metadata_json["notification_type"].astext == notification_type,
+            Notification.metadata_json["notification_type"].as_string() == notification_type,
         ).first()
 
         return existing is not None
