@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from datetime import datetime
+from typing import Optional, List, Dict, Any, Literal
 
 
 class AIEvidenceSchema(BaseModel):
@@ -35,8 +34,14 @@ class AIDashboardSummarySchema(BaseModel):
     recommendations: List[str] = Field(default_factory=list)
 
 
+class AIChatMessageSchema(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
 class AIChatRequestSchema(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=1000)
+    history: List[AIChatMessageSchema] = Field(default_factory=list, max_length=8)
 
 
 class AIChatResponseSchema(BaseModel):

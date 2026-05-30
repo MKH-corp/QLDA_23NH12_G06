@@ -8,6 +8,7 @@ from app.schemas.ai import (
 from app.services.ai_context_service import AIContextService
 from app.services.ai_insight_service import AIInsightService
 from app.services.notification_engine import NotificationEngine
+from app.services.openai_chat_service import OpenAIChatError, OpenAIChatService
 
 router = APIRouter()
 
@@ -114,18 +115,38 @@ def chat_with_ai(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_authenticated_user)
 ):
-    """Chat with AI assistant (fallback only - no OpenAI integration yet)"""
+    """Chat with the OpenAI-backed assistant, with a local fallback."""
     context_service = AIContextService(db)
     context = context_service.get_context_for_user(current_user)
+    chat_service = OpenAIChatService()
 
-    # Fallback response using context
-    reply = _generate_fallback_reply(request.message, context, current_user)
+    if chat_service.is_configured:
+        try:
+            result = chat_service.generate_reply(request.message, context, request.history)
+            return AIChatResponseSchema(
+                reply=result.reply,
+                insights=[],
+                used_fallback=False,
+                evidence={
+                    "source": "openai",
+                    "model": result.model,
+                    "request_id": result.request_id,
+                },
+            )
+        except OpenAIChatError:
+            fallback_reason = "openai_unavailable"
+    else:
+        fallback_reason = "openai_not_configured"
 
     return AIChatResponseSchema(
-        reply=reply,
+        reply=_generate_fallback_reply(request.message, context, current_user),
         insights=[],
         used_fallback=True,
-        evidence={"source": "fallback", "has_context": len(context) > 0}
+        evidence={
+            "source": "fallback",
+            "reason": fallback_reason,
+            "has_context": len(context) > 0,
+        },
     )
 
 

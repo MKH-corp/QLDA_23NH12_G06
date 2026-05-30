@@ -39,6 +39,11 @@ export interface AIChatResponse {
   evidence: Record<string, any>;
 }
 
+export interface AIChatMessage {
+  role: 'assistant' | 'user';
+  content: string;
+}
+
 export const getMyAIInsights = () => apiRequest<AIInsight[]>('/ai/insights/me');
 export const getTeamAIInsights = () => apiRequest<AIInsight[]>('/ai/insights/team');
 export const runAIInsights = () =>
@@ -46,8 +51,8 @@ export const runAIInsights = () =>
     method: 'POST',
   });
 export const getAIDashboardSummary = () => apiRequest<AIDashboardSummary>('/ai/summary/dashboard');
-export const chatWithAI = (message: string) =>
+export const chatWithAI = (message: string, history: AIChatMessage[] = []) =>
   apiRequest<AIChatResponse>('/ai/chat', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });

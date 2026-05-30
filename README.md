@@ -212,7 +212,12 @@ APP_NAME=Work & KPI Management API
 BUSINESS_TIMEZONE=Asia/Ho_Chi_Minh
 NOTIFICATION_SCHEDULER_ENABLED=true
 NOTIFICATION_SCHEDULER_INTERVAL_SECONDS=300
+OPENAI_CHAT_ENABLED=true
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
 ```
+
+`OPENAI_API_KEY` chỉ được cấu hình trong `backend/.env`. Không đưa API key vào frontend hoặc commit lên Git.
 
 ### Frontend - `frontend/.env`
 File mẫu:

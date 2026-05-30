@@ -11,6 +11,7 @@ export function ChatbotPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [mode, setMode] = useState<'ai' | 'fallback' | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', text: 'Xin chào. Bạn có thể hỏi tôi về KPI, công việc quá hạn hoặc hiệu suất của nhóm.' },
   ]);
@@ -23,7 +24,9 @@ export function ChatbotPanel() {
     setMessages((current) => [...current, { role: 'user', text: message }]);
     setSending(true);
     try {
-      const result = await chatWithAI(message);
+      const history = messages.slice(-8).map((item) => ({ role: item.role, content: item.text }));
+      const result = await chatWithAI(message, history);
+      setMode(result.used_fallback ? 'fallback' : 'ai');
       setMessages((current) => [...current, { role: 'assistant', text: result.reply }]);
     } catch (error) {
       setMessages((current) => [...current, { role: 'assistant', text: 'Không thể kết nối trợ lý lúc này. Vui lòng thử lại.' }]);
@@ -43,6 +46,7 @@ export function ChatbotPanel() {
             <div>
               <strong>Trợ lý KPI</strong>
               <p>Phản hồi theo dữ liệu bạn được phép xem</p>
+              {mode ? <span className={`chatbot-panel__mode chatbot-panel__mode--${mode}`}>{mode === 'ai' ? 'OpenAI' : 'Dự phòng nội bộ'}</span> : null}
             </div>
           </header>
           <div className="chatbot-panel__messages">
