@@ -16,6 +16,10 @@ export const getKpiAnalytics = () => apiRequest<KpiRecord[]>('/kpi/analytics');
 // --- NOTIFICATIONS API ---
 export const getNotifications = () => apiRequest<Notification[]>('/notifications/');
 export const markNotificationAsRead = (id: number) => apiRequest(`/notifications/${id}/read`, { method: 'PUT' });
+export const runNotificationCheck = () =>
+  apiRequest<{ message: string; users_checked: number | string }>('/notifications/run-check', {
+    method: 'POST',
+  });
 
 // --- USERS API ---
 export interface User { 

@@ -17,6 +17,8 @@ export interface ProjectListItem {
   progress_percentage: number;
   start_date: string | null;
   end_date: string | null;
+  department_id: number | null;
+  manager_id: number | null;
   department_name: string;
   manager_name: string;
   total_tasks: number;

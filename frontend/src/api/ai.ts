@@ -41,7 +41,13 @@ export interface AIChatResponse {
 
 export const getMyAIInsights = () => apiRequest<AIInsight[]>('/ai/insights/me');
 export const getTeamAIInsights = () => apiRequest<AIInsight[]>('/ai/insights/team');
-export const runAIInsights = () => apiRequest<{ message: string; users_processed: number | string }>('/ai/insights/run', 'POST');
+export const runAIInsights = () =>
+  apiRequest<{ message: string; users_processed: number | string }>('/ai/insights/run', {
+    method: 'POST',
+  });
 export const getAIDashboardSummary = () => apiRequest<AIDashboardSummary>('/ai/summary/dashboard');
 export const chatWithAI = (message: string) =>
-  apiRequest<AIChatResponse>('/ai/chat', 'POST', { message });
+  apiRequest<AIChatResponse>('/ai/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });

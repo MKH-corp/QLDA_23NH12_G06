@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getNotifications, markNotificationAsRead } from '../api/services';
+import { getNotifications, markNotificationAsRead, runNotificationCheck } from '../api/services';
 import { useFetch } from '../hooks/useApi';
 
 export function NotificationBell() {
@@ -13,9 +13,24 @@ export function NotificationBell() {
     refetch(); // Cập nhật lại số đếm sau khi click
   };
 
+  const handleToggle = async () => {
+    const nextIsOpen = !isOpen;
+    setIsOpen(nextIsOpen);
+
+    if (nextIsOpen) {
+      try {
+        await runNotificationCheck();
+      } catch (error) {
+        console.error('Failed to refresh notifications:', error);
+      } finally {
+        await refetch();
+      }
+    }
+  };
+
   return (
     <div style={{ position: 'relative' }}>
-      <button className="icon-btn" onClick={() => setIsOpen(!isOpen)}>
+      <button className="icon-btn" onClick={handleToggle}>
         🔔
         {unreadCount > 0 && <span className="notify-badge">{unreadCount}</span>}
       </button>
@@ -50,4 +65,4 @@ export function NotificationBell() {
       )}
     </div>
   );
-} 
+}

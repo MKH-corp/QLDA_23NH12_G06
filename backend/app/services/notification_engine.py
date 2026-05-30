@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
 from datetime import datetime, timedelta, UTC
 from app.models.notification import Notification
 from app.models.task import Task, TaskStatus
 from app.models.user import User
 from app.models.kpi_snapshot import KpiSnapshot
-from app.models.department import Department
 
 
 class NotificationEngine:
@@ -49,6 +47,7 @@ class NotificationEngine:
                     severity="danger",
                     source="notification_engine",
                     metadata_json={
+                        "notification_type": "overdue_task",
                         "overdue_task_ids": task_ids,
                         "overdue_count": len(overdue_tasks)
                     },
@@ -80,6 +79,7 @@ class NotificationEngine:
                     severity="warning",
                     source="notification_engine",
                     metadata_json={
+                        "notification_type": "near_deadline",
                         "near_deadline_task_ids": task_ids,
                         "near_deadline_count": len(near_deadline_tasks)
                     },
@@ -106,6 +106,7 @@ class NotificationEngine:
                     severity="warning",
                     source="notification_engine",
                     metadata_json={
+                        "notification_type": "blocked_task",
                         "blocked_task_ids": task_ids,
                         "blocked_count": len(blocked_tasks)
                     },
@@ -131,6 +132,7 @@ class NotificationEngine:
                     severity="warning",
                     source="notification_engine",
                     metadata_json={
+                        "notification_type": "low_kpi",
                         "kpi_score": snapshot.total_score,
                         "period_key": self.period_key
                     },
@@ -151,6 +153,7 @@ class NotificationEngine:
             existing = self.db.query(Notification).filter(
                 Notification.user_id == user_id,
                 Notification.metadata_json["notification_type"].astext == "excellent_performance",
+                Notification.metadata_json["period_key"].astext == self.period_key,
             ).first()
 
             if not existing:
@@ -163,6 +166,7 @@ class NotificationEngine:
                     source="notification_engine",
                     metadata_json={
                         "notification_type": "excellent_performance",
+                        "period_key": self.period_key,
                         "kpi_score": snapshot.total_score,
                         "tasks_completed": snapshot.tasks_completed,
                         "tasks_overdue": snapshot.tasks_overdue
@@ -175,25 +179,11 @@ class NotificationEngine:
     def _notification_exists_today(self, user_id: int, notification_type: str) -> bool:
         """Check if a notification of the same type already exists for today"""
         today_start = datetime.combine(self.today, datetime.min.time())
-        today_end = datetime.combine(self.today, datetime.max.time())
-
-        # Map notification_type to a message pattern to find existing notifications
-        type_patterns = {
-            "overdue_task": "qua han",
-            "near_deadline": "sap toi han",
-            "blocked_task": "bi chan",
-            "low_kpi": "KPI thang nay thap",
-            "excellent_performance": "xuat sac"
-        }
-
-        pattern = type_patterns.get(notification_type, "")
-        if not pattern:
-            return False
 
         existing = self.db.query(Notification).filter(
             Notification.user_id == user_id,
             Notification.created_at >= today_start,
-            Notification.message.contains(pattern)
+            Notification.metadata_json["notification_type"].astext == notification_type,
         ).first()
 
         return existing is not None

@@ -165,19 +165,20 @@ class ProjectService:
         # Xử lý đổi status riêng (validate transition)
         if "status" in data:
             new_status = ProjectStatus(data["status"])
-            self._validate_transition(project, new_status)
-            old_status = project.status
-            project.status = new_status.value
-            self._write_status_history(project_id, old_status,
-                                       new_status.value, actor.id, reason)
+            if new_status.value != project.status:
+                self._validate_transition(project, new_status)
+                old_status = project.status
+                project.status = new_status.value
+                self._write_status_history(project_id, old_status,
+                                           new_status.value, actor.id, reason)
 
-            # Archive
-            if new_status == ProjectStatus.ARCHIVED:
-                project.archived_at = datetime.now(timezone.utc)
+                # Archive
+                if new_status == ProjectStatus.ARCHIVED:
+                    project.archived_at = datetime.now(timezone.utc)
 
-            # KPI trigger khi COMPLETED
-            if new_status == ProjectStatus.COMPLETED:
-                self._trigger_completion_kpi(project_id, actor)
+                # KPI trigger khi COMPLETED
+                if new_status == ProjectStatus.COMPLETED:
+                    self._trigger_completion_kpi(project_id, actor)
 
             data.pop("status")
 
@@ -402,6 +403,8 @@ class ProjectService:
             current = ProjectStatus(project.status)
         except ValueError:
             return  # status cũ không hợp lệ, cho phép đổi
+        if new_status == current:
+            return
         allowed = ALLOWED_TRANSITIONS.get(current, set())
         if new_status not in allowed:
             raise HTTPException(
@@ -451,11 +454,13 @@ class ProjectService:
             and project.status not in ("COMPLETED", "CANCELLED", "ARCHIVED")
         )
         return ProjectListItem(
-            id=project.id, name=project.name, code=project.code,
+            id=project.id, name=project.name, description=project.description,
+            code=project.code,
             status=project.status,
             priority=project.priority.value if project.priority else "MEDIUM",
             progress_percentage=project.progress_percentage or 0,
             start_date=project.start_date, end_date=project.end_date,
+            department_id=project.department_id, manager_id=project.manager_id,
             department_name=project.department.name if project.department else "",
             manager_name=project.manager.full_name if project.manager else "",
             total_tasks=counts["total"],

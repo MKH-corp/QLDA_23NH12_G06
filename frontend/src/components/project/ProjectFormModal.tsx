@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ProjectCreate, ProjectListItem, ProjectStatus, ProjectPriority } from '../../types/project';
+import { getDepartments, getUsers } from '../../api/references';
 
 interface ProjectFormModalProps {
   project: ProjectListItem | null;
@@ -36,22 +37,11 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
     const loadDepts = async () => {
       try {
         setDeptLoading(true);
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/v1/departments');
-        // const data = await response.json();
-        // setDepartments(data);
-        
-        // For now, use mock data
-        const mockDepts = [
-          { id: 1, name: 'Sales' },
-          { id: 2, name: 'Engineering' },
-          { id: 3, name: 'HR' },
-          { id: 4, name: 'Finance' },
-        ];
-        setDepartments(mockDepts);
+        const departmentData = await getDepartments();
+        setDepartments(departmentData);
         
         // Set default to first department
-        setFormData(prev => ({ ...prev, department_id: mockDepts[0]?.id }));
+        setFormData(prev => ({ ...prev, department_id: prev.department_id ?? departmentData[0]?.id }));
       } catch (e) {
         console.error('Failed to load departments:', e);
       } finally {
@@ -61,17 +51,9 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
 
     const loadManagers = async () => {
       try {
-        // TODO: Replace with actual API call
-        // const response = await fetch('/api/v1/users?role=manager');
-        // const data = await response.json();
-        // setManagers(data);
-        
-        const mockManagers = [
-          { id: 1, full_name: 'Nguyễn Văn A' },
-          { id: 2, full_name: 'Trần Thị B' },
-          { id: 3, full_name: 'Lê Văn C' },
-        ];
-        setManagers(mockManagers);
+        setManagers((await getUsers()).filter(
+          user => user.role === 'manager' || user.role === 'admin'
+        ));
       } catch (e) {
         console.error('Failed to load managers:', e);
       }
@@ -96,8 +78,8 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
         end_date: project.end_date
           ? new Date(project.end_date).toISOString().split('T')[0]
           : '',
-        department_id: undefined,  // Not in ProjectListItem response from backend
-        manager_id: undefined,      // Not in ProjectListItem response from backend
+        department_id: project.department_id ?? undefined,
+        manager_id: project.manager_id ?? undefined,
       });
     }
   }, [project]);
@@ -107,7 +89,11 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
     setLoading(true);
     setError(null);
     try {
-      await onSubmit(formData);
+      const data = { ...formData };
+      if (project && data.status === project.status) {
+        delete data.status;
+      }
+      await onSubmit(data);
       onClose();
     } catch (e: any) {
       setError(e.message || 'Lỗi khi lưu dự án');
@@ -329,10 +315,10 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
                 Phòng ban *
               </label>
-              <input
-                type="number"
-                value={formData.department_id}
-                onChange={e => handleChange('department_id', parseInt(e.target.value))}
+              <select
+                value={formData.department_id ?? ''}
+                onChange={e => handleChange('department_id', Number(e.target.value))}
+                disabled={deptLoading}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -342,7 +328,35 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
                   boxSizing: 'border-box',
                 }}
                 required
-              />
+              >
+                <option value="">Select department</option>
+                {departments.map(department => (
+                  <option key={department.id} value={department.id}>{department.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                Manager
+              </label>
+              <select
+                value={formData.manager_id ?? ''}
+                onChange={e => handleChange('manager_id', e.target.value ? Number(e.target.value) : undefined)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="">No manager</option>
+                {managers.map(manager => (
+                  <option key={manager.id} value={manager.id}>{manager.full_name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Buttons */}
