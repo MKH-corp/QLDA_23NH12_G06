@@ -600,7 +600,7 @@ class ProjectService:
 
     def _task_to_summary(self, task: Task) -> TaskSummary:
         today = date.today()
-        from app.utils.task_utils import infer_priority
+        from app.utils.task_ultis import infer_priority
         return TaskSummary(
             id=task.id, title=task.title, status=task.status,
             priority=infer_priority(task.base_weight),

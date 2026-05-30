@@ -27,6 +27,13 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
     load();
   }, [projectId]);
 
+  const memberCount = project?.members.length ?? 0;
+  const totalTasks = project?.analytics?.total_tasks ?? project?.recent_tasks.length ?? 0;
+  const completedTasks = project?.analytics?.completed_tasks ?? 0;
+  const overdueTasks = project?.analytics?.overdue_tasks ?? 0;
+  const milestoneCount = project?.milestones.length ?? 0;
+  const milestonesDone = project?.milestones.filter((milestone) => milestone.is_completed).length ?? 0;
+
   return (
     <div
       style={{
@@ -100,7 +107,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                   { label: 'Phòng ban', value: project.department_name || '—' },
                   { label: 'Quản lý', value: project.manager_name || '—' },
                   { label: 'Tiến độ', value: `${Math.round(project.progress_percentage)}%` },
-                  { label: 'Nhân sự', value: `${project.member_count} người` },
+                  { label: 'Nhân sự', value: `${memberCount} người` },
                 ].map(stat => (
                   <div key={stat.label} style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>{stat.label}</div>
@@ -139,9 +146,9 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>✅ Công việc</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                   {[
-                    { label: 'Tổng', value: project.total_tasks },
-                    { label: 'Hoàn thành', value: project.completed_tasks },
-                    { label: 'Quá hạn', value: project.overdue_tasks },
+                    { label: 'Tổng', value: totalTasks },
+                    { label: 'Hoàn thành', value: completedTasks },
+                    { label: 'Quá hạn', value: overdueTasks },
                   ].map(item => (
                     <div key={item.label} style={{ background: '#f8fafc', padding: 10, borderRadius: 8, textAlign: 'center' }}>
                       <div style={{ fontSize: 11, color: '#64748b' }}>{item.label}</div>
@@ -156,8 +163,8 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>🎯 Milestone</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                   {[
-                    { label: 'Tổng', value: project.milestone_count },
-                    { label: 'Hoàn thành', value: project.milestones_done },
+                    { label: 'Tổng', value: milestoneCount },
+                    { label: 'Hoàn thành', value: milestonesDone },
                   ].map(item => (
                     <div key={item.label} style={{ background: '#f8fafc', padding: 10, borderRadius: 8, textAlign: 'center' }}>
                       <div style={{ fontSize: 11, color: '#64748b' }}>{item.label}</div>
@@ -182,3 +189,4 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
     </div>
   );
 }
+

@@ -10,6 +10,7 @@ export type MemberRole = 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'MEMBER' | 'VIEWER';
 export interface ProjectListItem {
   id: number;
   name: string;
+  description?: string | null;
   code: string | null;
   status: ProjectStatus;
   priority: ProjectPriority;

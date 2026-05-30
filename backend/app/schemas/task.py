@@ -13,6 +13,7 @@ class TaskCreate(BaseModel):
     base_weight: int = 1
     assignee_id: int
     department_id: int
+    project_id: int | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -23,6 +24,7 @@ class TaskUpdate(BaseModel):
     base_weight: int | None = None
     assignee_id: int | None = None
     department_id: int | None = None
+    project_id: int | None = None
 
 
 class TaskRead(BaseModel):
@@ -38,3 +40,4 @@ class TaskRead(BaseModel):
     creator_id: int
     assignee_id: int
     department_id: int
+    project_id: int | None = None

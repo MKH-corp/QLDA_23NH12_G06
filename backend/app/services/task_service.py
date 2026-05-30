@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
+from app.models.project import Project
 from app.models.user import User, UserRole
 from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
@@ -32,6 +33,8 @@ class TaskService:
         if actor.role == UserRole.MANAGER and department.id != actor.department_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to create tasks outside your department")
 
+        self._ensure_project_is_usable(payload.project_id, department.id, actor)
+
         task = Task(
             title=payload.title,
             description=payload.description,
@@ -41,6 +44,7 @@ class TaskService:
             creator_id=actor.id,
             assignee_id=payload.assignee_id,
             department_id=payload.department_id,
+            project_id=payload.project_id,
         )
         if task.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
@@ -95,6 +99,9 @@ class TaskService:
             self._ensure_assignee_matches_department(assignee, data.get("department_id", task.department_id))
             if actor.role == UserRole.MANAGER and assignee.department_id != actor.department_id:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to assign tasks outside your department")
+
+        if "project_id" in data:
+            self._ensure_project_is_usable(data["project_id"], data.get("department_id", task.department_id), actor)
 
         for field, value in data.items():
             setattr(task, field, value)
@@ -160,4 +167,24 @@ class TaskService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Assignee must belong to the same department as the task",
+            )
+
+    def _ensure_project_is_usable(self, project_id: int | None, department_id: int, actor: User) -> None:
+        if project_id is None:
+            return
+
+        project = self.db.get(Project, project_id)
+        if project is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+        if project.department_id is not None and project.department_id != department_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Project must belong to the same department as the task",
+            )
+
+        if actor.role == UserRole.MANAGER and project.department_id != actor.department_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed to use projects outside your department",
             )

@@ -13,6 +13,7 @@ interface BackendTask {
   creator_id: number;
   assignee_id: number;
   department_id: number;
+  project_id?: number | null;
 }
 
 function mapBackendTask(task: BackendTask): Task {
@@ -31,6 +32,7 @@ function toCreatePayload(values: TaskFormValues): TaskPayload {
     base_weight: Number(values.base_weight),
     assignee_id: Number(values.assignee_id),
     department_id: Number(values.department_id),
+    project_id: values.project_id ?? null,
   };
 }
 
@@ -43,6 +45,7 @@ function toUpdatePayload(values: TaskFormValues): Partial<TaskPayload> {
     base_weight: Number(values.base_weight),
     assignee_id: Number(values.assignee_id),
     department_id: Number(values.department_id),
+    project_id: values.project_id ?? null,
   };
 }
 

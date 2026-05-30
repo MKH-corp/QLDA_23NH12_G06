@@ -35,8 +35,8 @@ export function toTaskFormValues(task?: Task | null): TaskFormValues {
     status: task?.status ?? 'todo',
     deadline: task?.deadline ?? '',
     base_weight: task?.base_weight ?? 1,
-    creator_id: task?.creator_id ?? 1,
     assignee_id: task?.assignee_id ?? 1,
     department_id: task?.department_id ?? 1,
+    project_id: task?.project_id ?? null,
   };
 }

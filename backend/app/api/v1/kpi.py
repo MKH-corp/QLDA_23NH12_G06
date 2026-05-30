@@ -33,6 +33,8 @@ def get_team_kpi(db=Depends(get_db), current_user: User = Depends(require_authen
               
     if current_user.role == UserRole.MANAGER:
         query = query.filter(User.department_id == current_user.department_id)
+    elif current_user.role == UserRole.STAFF:
+        query = query.filter(User.id == current_user.id)
         
     results = query.order_by(desc(KpiSnapshot.total_score)).limit(10).all()
     

@@ -13,6 +13,7 @@ export interface Task {
   creator_id: number;
   assignee_id: number;
   department_id: number;
+  project_id?: number | null;
   priority: 'Low' | 'Medium' | 'High';
 }
 
@@ -24,6 +25,7 @@ export interface TaskPayload {
   base_weight: number;
   assignee_id: number;
   department_id: number;
+  project_id?: number | null;
 }
 
 export interface TaskFormValues {
@@ -34,4 +36,5 @@ export interface TaskFormValues {
   base_weight: number;
   assignee_id: number;
   department_id: number;
+  project_id?: number | null;
 }

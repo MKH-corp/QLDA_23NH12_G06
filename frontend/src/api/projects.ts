@@ -1,12 +1,13 @@
 import { apiRequest } from './client';
 import { 
-  Project, ProjectCreate, ProjectUpdate, ProjectAnalytics, 
+  ProjectCreate, ProjectUpdate, ProjectAnalytics, 
   ProjectListItem, DashboardSummary, ProjectOverview,
   ProjectMember, MemberRole, Milestone, KpiContribution 
 } from '../types/project';
 
 // Lưu ý: Thêm prefix /api/v1 nếu backend của bạn mount router ở /api/v1
-const BASE_PATH = '/api/v1/projects'; 
+const BASE_PATH = '/projects'; 
+const COLLECTION_PATH = `${BASE_PATH}/`;
 
 // ── Projects ──────────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ export const projectApi = {
     if (params?.skip) q.set('skip', String(params.skip));
     if (params?.limit) q.set('limit', String(params.limit));
     const qs = q.toString() ? `?${q.toString()}` : '';
-    return apiRequest<ProjectListItem[]>(`${BASE_PATH}${qs}`);
+    return apiRequest<ProjectListItem[]>(`${COLLECTION_PATH}${qs}`);
   },
 
   // GET: Lấy chi tiết 1 dự án
@@ -27,7 +28,7 @@ export const projectApi = {
 
   // POST: Tạo mới
   create: (data: ProjectCreate) => 
-    apiRequest<ProjectListItem>(BASE_PATH, {
+    apiRequest<ProjectListItem>(COLLECTION_PATH, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
