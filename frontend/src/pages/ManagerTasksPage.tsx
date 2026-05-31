@@ -10,6 +10,7 @@ import type { DepartmentOption, UserOption } from '../types/reference';
 import type { Task, TaskFormValues } from '../types/task';
 import type { AssignableUser, ProjectListItem } from '../types/project';
 import { useAuth } from '../context/AuthContext';
+import { Icon, PageHeader, StatCard } from '../components/ui';
 
 export function ManagerTasksPage() {
   const { user } = useAuth();
@@ -84,6 +85,12 @@ export function ManagerTasksPage() {
   };
 
   const visibleUsers = useMemo(() => users.filter((item) => item.department_id === user?.department_id), [users, user?.department_id]);
+  const taskSummary = useMemo(() => ({
+    blocked: tasks.filter(task => task.status === 'blocked').length,
+    done: tasks.filter(task => task.status === 'done').length,
+    inReview: tasks.filter(task => task.status === 'in_review').length,
+    total: tasks.length,
+  }), [tasks]);
   const handleSubmit = async (values: TaskFormValues) => {
     try {
       if (formMode === 'create') {
@@ -135,17 +142,29 @@ export function ManagerTasksPage() {
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Manager</p>
-          <h1>Công việc của nhóm</h1>
-          <p className="subtitle">Tạo, phân công và theo dõi công việc trong phòng ban.</p>
-        </div>
+      <PageHeader
+        eyebrow="Workspace quản lý"
+        title="Công việc của nhóm"
+        description="Tạo, phân công và theo dõi tiến độ công việc trong phòng ban."
+        actions={<button type="button" className="button-secondary" onClick={() => void Promise.all([loadTasks(), loadReferences()])}>
+          <Icon name="refresh" size={15} /> Tải lại
+        </button>}
+      />
+
+      <div className="dashboard-stat-grid dashboard-stat-grid--compact">
+        <StatCard icon="tasks" label="Task đang hiển thị" value={taskSummary.total} tone="blue" />
+        <StatCard icon="sparkles" label="Chờ duyệt" value={taskSummary.inReview} tone="orange" />
+        <StatCard icon="alert" label="Bị chặn" value={taskSummary.blocked} tone="red" />
+        <StatCard icon="check" label="Hoàn thành" value={taskSummary.done} tone="green" />
+      </div>
+
+      <div className="filter-toolbar">
         <div className="toolbar-grid">
           <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}>
             <option value="all">Tất cả trạng thái</option>
             <option value="todo">Cần làm</option>
             <option value="doing">Đang làm</option>
+            <option value="in_review">Chờ duyệt</option>
             <option value="blocked">Bị chặn</option>
             <option value="done">Hoàn thành</option>
           </select>
@@ -167,11 +186,8 @@ export function ManagerTasksPage() {
               <option key={project.id} value={project.id}>{project.code || project.name}</option>
             ))}
           </select>
-          <button type="button" className="button-secondary" onClick={() => void Promise.all([loadTasks(), loadReferences()])}>
-            Tải lại
-          </button>
         </div>
-      </header>
+      </div>
 
       {error ? <div className="alert alert--error">{error}</div> : null}
 

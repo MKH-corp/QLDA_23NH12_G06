@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getDashboardData, type DashboardData } from '../api/dashboard';
 import { RecentActivityTimeline } from '../components/RecentActivityTimeline';
+import { PageHeader, StatCard } from '../components/ui';
 
 export function AdminPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -26,63 +27,38 @@ export function AdminPage() {
 
   return (
     <div className="admin-dashboard">
-      {/* ... GIỮ NGUYÊN PHẦN HEADER & QUICK ACTIONS ... */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1>Tổng quan hệ thống</h1>
+      <PageHeader
+        eyebrow="Dashboard quản trị"
+        title="Tổng quan hệ thống"
+        description="Theo dõi nhanh nhân sự, tiến độ công việc và hiệu suất toàn tổ chức."
+      />
+
+      <div className="dashboard-stat-grid">
+        <StatCard icon="users" label="Tổng nhân viên" value={data.stats.total_employees} tone="blue" hint="Tài khoản trong hệ thống" />
+        <StatCard icon="building" label="Phòng ban hoạt động" value={data.stats.active_departments} tone="green" hint="Đang vận hành" />
+        <StatCard icon="check" label="Công việc hoàn thành" value={data.stats.completed_tasks} tone="purple" hint="Tổng số task đã chốt" />
+        <StatCard icon="kpi" label="KPI trung bình" value={`${data.stats.avg_kpi}%`} tone="orange" hint="Hiệu suất toàn công ty" />
       </div>
 
-      {/* 3. THẺ THỐNG KÊ DATA THẬT */}
-      <div className="stats-grid">
-        <div className="glass-panel stat-card">
-          <div className="stat-icon blue">👥</div>
-          <div className="stat-info">
-            <p>Tổng nhân viên</p>
-            <h3>{data.stats.total_employees}</h3>
-          </div>
-        </div>
-        <div className="glass-panel stat-card">
-          <div className="stat-icon green">🏢</div>
-          <div className="stat-info">
-            <p>Phòng ban hoạt động</p>
-            <h3>{data.stats.active_departments}</h3>
-          </div>
-        </div>
-        <div className="glass-panel stat-card">
-          <div className="stat-icon purple">✅</div>
-          <div className="stat-info">
-            <p>Công việc hoàn thành</p>
-            <h3>{data.stats.completed_tasks}</h3>
-          </div>
-        </div>
-        <div className="glass-panel stat-card">
-          <div className="stat-icon orange">📈</div>
-          <div className="stat-info">
-            <p>KPI trung bình</p>
-            <h3>{data.stats.avg_kpi}%</h3>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. MAIN LAYOUT GRID */}
       <div className="dashboard-layout">
-        
-        {/* Bảng nhân viên & Biểu đồ Data Thật */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
           <div className="glass-panel">
-            <h2 className="panel-title">Hiệu suất theo phòng ban</h2>
-            <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', gap: '20px', padding: '20px 0', borderBottom: '1px dashed #e2e8f0' }}>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">So sánh nội bộ</p>
+                <h2 className="panel-title">Hiệu suất theo phòng ban</h2>
+              </div>
+              <span className="panel-heading__note">Điểm KPI trung bình</span>
+            </div>
+            <div className="department-chart">
               {data.department_charts.map((dept, i) => (
-                <div key={dept.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                  {/* Chiều cao cột = Điểm KPI */}
-                  <div style={{ 
-                    width: '40px', 
-                    height: `${dept.score === 0 ? 10 : dept.score}px`, 
+                <div key={dept.id} className="department-chart__item">
+                  <strong>{dept.score}%</strong>
+                  <div style={{
+                    height: `${dept.score === 0 ? 10 : dept.score}px`,
                     background: i % 2 === 0 ? 'linear-gradient(0deg, #3b82f6, #93c5fd)' : 'linear-gradient(0deg, #8b5cf6, #c4b5fd)',
-                    borderRadius: '6px 6px 0 0',
-                    transition: 'height 1s ease-out'
-                  }}></div>
-                  <span style={{ fontSize: '12px', color: '#64748b', textAlign: 'center' }}>{dept.name}</span>
+                  }} />
+                  <span>{dept.name}</span>
                 </div>
               ))}
             </div>
@@ -134,9 +110,8 @@ export function AdminPage() {
           </div>
         </div>
 
-        {/* AI Insights & Hoạt động gần đây */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div className="glass-panel" style={{ background: 'linear-gradient(135deg, #1e3a8a, #312e81)', color: 'white' }}>
+          <div className="glass-panel insight-feature">
             <h2 className="panel-title" style={{ color: 'white' }}>Insight hiệu suất</h2>
             <p style={{ fontSize: '14px', lineHeight: '1.6', opacity: 0.9 }}>
               {data.ai_insights}

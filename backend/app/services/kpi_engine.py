@@ -53,7 +53,8 @@ class KpiEngine:
         # 3. ANTI-CHEATING & SCORING LOGIC
         for task in done_tasks:
             # Lấy thẳng base_weight làm hệ số ưu tiên (mặc định 1.0 nếu rỗng)
-            weight = float(task.estimated_hours or task.base_weight or 1.0)
+            # estimated_hours is workload metadata, not a KPI input.
+            weight = float(task.base_weight or 1.0)
             project_weight = float(task.project.project_weight or 1.0) if task.project else 1.0
             
             # Tính điểm gốc = hệ số * điểm chuẩn
@@ -68,17 +69,17 @@ class KpiEngine:
                     breakdown["on_time_bonus"] += bonus
                     breakdown["on_time_count"] += 1
                 else:
-                    days_late = max((completion_business_date(task.done_at) - task.deadline).days, 1)
-                    penalty = task_score * min(days_late * 0.05, 0.5)
+                    overdue_multiplier = max(0.0, min(float(self.rules['OVERDUE_PENALTY']), 1.0))
+                    penalty = task_score * (1 - overdue_multiplier)
                     task_score -= penalty
                     breakdown["overdue_penalty_amount"] -= penalty
                     breakdown["overdue_count"] += 1
 
             # Check Reopen Abuse
-            if task.reopen_count and task.reopen_count > 2:
-                reopen_penalty = task_score * 0.1
-                task_score -= reopen_penalty
-                breakdown["reopen_penalty_amount"] -= reopen_penalty
+            if task.reopen_count:
+                reopen_penalty = float(self.rules['REOPEN_PENALTY']) * task.reopen_count
+                task_score += reopen_penalty
+                breakdown["reopen_penalty_amount"] += reopen_penalty
 
             total_score += max(task_score * project_weight, 0) # Không để task âm điểm quá nặng kéo sập hệ thống
 

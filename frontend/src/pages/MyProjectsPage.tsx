@@ -68,7 +68,7 @@ export function MyProjectsPage() {
     <div className="page my-projects-page">
       <div className="page-header my-projects-header">
         <div>
-          <p className="eyebrow">My Projects</p>
+          <p className="eyebrow">Workspace cá nhân</p>
           <h2>Dự án của tôi</h2>
           <p className="my-projects-subtitle">
             {user?.role === 'manager'
@@ -164,9 +164,9 @@ function MyProjectTable({
             <th>Deadline</th>
             <th>Tiến độ</th>
             <th>Task cá nhân</th>
-            <th>Doing</th>
-            <th>Review</th>
-            <th>Done</th>
+            <th>Đang làm</th>
+            <th>Chờ duyệt</th>
+            <th>Hoàn thành</th>
             <th>Quá hạn</th>
             <th>Health</th>
             <th />

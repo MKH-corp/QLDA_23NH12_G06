@@ -258,7 +258,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                   <div><strong>Giờ dự kiến</strong><span>{analytics?.estimated_hours ?? 0}</span></div>
                   <div><strong>Giờ thực tế</strong><span>{analytics?.actual_hours ?? 0}</span></div>
                   <div><strong>Ngân sách</strong><span>{project.estimated_budget ?? 'Chưa khai báo'}</span></div>
-                  <div><strong>Project weight</strong><span>{project.project_weight}</span></div>
+                  <div><strong>Trọng số dự án</strong><span>{project.project_weight}</span></div>
                 </div>
                 <p className="project-description">{project.description || 'Chưa có mô tả.'}</p>
               </section>
@@ -269,7 +269,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 <div className="project-section-heading">
                   <h3>Nhân viên trong dự án</h3>
                   <strong className={contributionTotal === 100 ? 'text-success' : 'text-warning'}>
-                    Contribution: {contributionTotal}%
+                    Tổng đóng góp: {contributionTotal}%
                   </strong>
                 </div>
                 {canEditContent ? (
@@ -290,7 +290,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 ) : null}
                 <div className="project-table-wrap">
                   <table className="project-table">
-                    <thead><tr><th>Nhân viên</th><th>Phòng ban</th><th>Vai trò</th><th>Task</th><th>Done</th><th>Contribution</th><th>Thao tác</th></tr></thead>
+                    <thead><tr><th>Nhân viên</th><th>Phòng ban</th><th>Vai trò</th><th>Task</th><th>Hoàn thành</th><th>Đóng góp</th><th>Thao tác</th></tr></thead>
                     <tbody>{project.members.map(member => {
                       const performance = memberPerformance.get(member.user_id);
                       return (
@@ -317,8 +317,8 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                             <button type="button" className="btn-outline" onClick={() => void runAction(async () => {
                               await removeMember(projectId, member.user_id);
                               await reloadProject();
-                            })}>Deactivate</button>
-                          ) : member.is_active ? 'Active' : 'Inactive'}</td>
+                            })}>Vô hiệu hóa</button>
+                          ) : member.is_active ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}</td>
                         </tr>
                       );
                     })}</tbody>
@@ -368,7 +368,7 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 </div>
                 <div className="project-table-wrap">
                   <table className="project-table">
-                    <thead><tr><th>Task</th><th>Assignee</th><th>Trạng thái</th><th>Deadline</th><th>Weight</th><th>Thao tác</th></tr></thead>
+                    <thead><tr><th>Task</th><th>Người phụ trách</th><th>Trạng thái</th><th>Deadline</th><th>Trọng số</th><th>Thao tác</th></tr></thead>
                     <tbody>{filteredTasks.map(task => (
                       <tr key={task.id}>
                         <td>{task.title}</td><td>{task.assignee_name}</td><td>{task.status}</td>
@@ -401,11 +401,11 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
                 ) : null}
                 <div className="project-table-wrap">
                   <table className="project-table">
-                    <thead><tr><th>Milestone</th><th>Deadline</th><th>Weight</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                    <thead><tr><th>Milestone</th><th>Deadline</th><th>Trọng số</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
                     <tbody>{project.milestones.map(milestone => (
                       <tr key={milestone.id}>
                         <td>{milestone.title}</td><td>{formatDate(milestone.due_date)}</td><td>{milestone.weight}</td>
-                        <td>{milestone.is_completed ? 'Done' : 'Open'}</td>
+                        <td>{milestone.is_completed ? 'Hoàn thành' : 'Đang mở'}</td>
                         <td><div className="project-actions">
                           {canEditContent && !milestone.is_completed ? <button type="button" className="btn-outline" onClick={() => void runAction(async () => {
                             await completeMilestone(projectId, milestone.id);
@@ -429,11 +429,11 @@ export function ProjectDetailModal({ projectId, onClose }: ProjectDetailModalPro
               <section className="project-tab-content">
                 <div className="project-metric-grid">
                   <Metric label="Tổng task" value={analytics?.total_tasks ?? 0} />
-                  <Metric label="Done" value={analytics?.done_tasks ?? 0} />
-                  <Metric label="Doing" value={analytics?.doing_tasks ?? 0} />
-                  <Metric label="Blocked" value={analytics?.blocked_tasks ?? 0} />
+                  <Metric label="Hoàn thành" value={analytics?.done_tasks ?? 0} />
+                  <Metric label="Đang làm" value={analytics?.doing_tasks ?? 0} />
+                  <Metric label="Bị chặn" value={analytics?.blocked_tasks ?? 0} />
                   <Metric label="Quá hạn" value={analytics?.overdue_tasks ?? 0} />
-                  <Metric label="Risk" value={analytics?.risk_level ?? 'LOW'} />
+                  <Metric label="Rủi ro" value={analytics?.risk_level ?? 'LOW'} />
                 </div>
                 <div className="project-overview-grid">
                   <div><strong>Đóng góp cao nhất</strong><span>{report?.top_contributor?.full_name || 'Chưa có dữ liệu'}</span></div>

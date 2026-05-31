@@ -177,7 +177,7 @@ export function TaskForm({
           <input
             type="number"
             min={1}
-            max={5}
+            max={10}
             value={values.base_weight}
             onChange={(event) => handleChange('base_weight', Number(event.target.value))}
           />

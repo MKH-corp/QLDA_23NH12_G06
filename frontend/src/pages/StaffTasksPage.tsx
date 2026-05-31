@@ -8,6 +8,7 @@ import { PaginationControls } from '../components/PaginationControls';
 import type { DepartmentOption, UserOption } from '../types/reference';
 import type { Task, TaskFormValues } from '../types/task';
 import { useAuth } from '../context/AuthContext';
+import { Icon, PageHeader, StatCard } from '../components/ui';
 
 export function StaffTasksPage() {
   const { user } = useAuth();
@@ -68,6 +69,12 @@ export function StaffTasksPage() {
     () => users.filter((item) => item.department_id === user?.department_id),
     [users, user?.department_id]
   );
+  const taskSummary = useMemo(() => ({
+    blocked: tasks.filter(task => task.status === 'blocked').length,
+    done: tasks.filter(task => task.status === 'done').length,
+    inReview: tasks.filter(task => task.status === 'in_review').length,
+    total: tasks.length,
+  }), [tasks]);
 
   const handleSubmit = async (values: TaskFormValues) => {
     try {
@@ -112,18 +119,21 @@ export function StaffTasksPage() {
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Staff</p>
-          <h1>Công việc của tôi</h1>
-          <p className="subtitle">Theo dõi và cập nhật các công việc được giao.</p>
-        </div>
-        <div className="toolbar-grid">
-          <button type="button" className="button-secondary" onClick={() => void loadTasks()}>
-            Tải lại
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Workspace cá nhân"
+        title="Công việc của tôi"
+        description="Theo dõi deadline và cập nhật tiến độ các công việc được giao."
+        actions={<button type="button" className="button-secondary" onClick={() => void loadTasks()}>
+          <Icon name="refresh" size={15} /> Tải lại
+        </button>}
+      />
+
+      <div className="dashboard-stat-grid dashboard-stat-grid--compact">
+        <StatCard icon="tasks" label="Task đang hiển thị" value={taskSummary.total} tone="blue" />
+        <StatCard icon="sparkles" label="Chờ duyệt" value={taskSummary.inReview} tone="orange" />
+        <StatCard icon="alert" label="Bị chặn" value={taskSummary.blocked} tone="red" />
+        <StatCard icon="check" label="Hoàn thành" value={taskSummary.done} tone="green" />
+      </div>
 
       {error ? <div className="alert alert--error">{error}</div> : null}
 

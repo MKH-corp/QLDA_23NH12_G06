@@ -169,6 +169,7 @@ class ProjectService:
                        actor: User) -> ProjectListItem:
         project = self._get_project_or_404(project_id)
         self._check_write_access(project, actor)
+        old_manager_id = project.manager_id
 
         data = payload.model_dump(exclude_unset=True)
         reason = data.pop("reason", None)
@@ -233,6 +234,8 @@ class ProjectService:
 
         project.updated_by = actor.id
         project = self.repo.update(project)
+        if old_manager_id != project.manager_id:
+            self._demote_replaced_project_manager(project.id, old_manager_id)
         if project.manager_id is not None:
             self._ensure_project_manager_membership(project.id, project.manager_id, actor.id)
 
@@ -359,6 +362,7 @@ class ProjectService:
         if not member:
             raise HTTPException(status.HTTP_404_NOT_FOUND,
                                 "Không tìm thấy thành viên")
+        self._ensure_member_can_be_deactivated(project, member)
 
         self._write_audit_log(project_id, actor.id, "members",
                               f"user_id={user_id}", None)
@@ -375,6 +379,16 @@ class ProjectService:
         if not member:
             raise HTTPException(status.HTTP_404_NOT_FOUND,
                                 "Không tìm thấy thành viên")
+        if req.is_active is False and member.is_active:
+            self._ensure_member_can_be_deactivated(project, member)
+        if member.user_id == project.manager_id and (
+            req.is_active is False
+            or (req.role is not None and req.role != ProjectMemberRole.PROJECT_MANAGER)
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Change the project manager before removing the current manager role",
+            )
 
         if req.contribution_share is not None:
             self._ensure_contribution_total(project_id, req.contribution_share, exclude_user_id=user_id)
@@ -737,6 +751,37 @@ class ProjectService:
         return self._add_member_internal(
             project_id, manager_id, ProjectMemberRole.PROJECT_MANAGER, added_by
         )
+
+    def _demote_replaced_project_manager(self, project_id: int,
+                                         old_manager_id: int | None) -> None:
+        if old_manager_id is None:
+            return
+        member = self.repo.get_member(project_id, old_manager_id)
+        if member and member.role == ProjectMemberRole.PROJECT_MANAGER:
+            member.role = ProjectMemberRole.MEMBER
+            self.repo.update_member(member)
+
+    def _ensure_member_can_be_deactivated(self, project: Project,
+                                          member: ProjectMember) -> None:
+        if member.user_id == project.manager_id:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Change the project manager before deactivating the current manager",
+            )
+        active_task = (
+            self.db.query(Task.id)
+            .filter(
+                Task.project_id == project.id,
+                Task.assignee_id == member.user_id,
+                Task.status != TaskStatus.DONE,
+            )
+            .first()
+        )
+        if active_task:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Reassign or complete the member's active project tasks before deactivation",
+            )
 
     def _get_project_milestone_or_404(self, project_id: int,
                                       milestone_id: int) -> ProjectMilestone:

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { getNotifications, markNotificationAsRead } from '../api/services';
 import { PaginationControls } from './PaginationControls';
+import { Icon } from './ui';
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Awaited<ReturnType<typeof getNotifications>> | null>(null);
@@ -36,13 +37,13 @@ export function NotificationBell() {
   return (
     <div className="floating-menu">
       <button type="button" className="icon-btn" onClick={() => void handleToggle()} aria-label="Mở thông báo">
-        🔔
+        <Icon name="bell" size={18} />
         {unreadCount > 0 ? <span className="notify-badge">{unreadCount}</span> : null}
       </button>
 
       {isOpen ? (
         <div className="glass-panel floating-menu__panel notification-panel">
-          <h4>Thông báo</h4>
+          <div className="floating-menu__heading"><span><Icon name="bell" size={17} /></span><div><h4>Thông báo</h4><p>Cập nhật mới nhất của bạn</p></div></div>
           {error ? <p className="alert alert--error">{error}</p> : null}
           {!notifications?.items.length ? (
             <p className="empty-copy">Chưa có thông báo.</p>

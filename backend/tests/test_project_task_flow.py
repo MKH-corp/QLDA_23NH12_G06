@@ -48,16 +48,20 @@ class ProjectTaskFlowTests(unittest.TestCase):
         return project
 
     def _create_project_task(self, project_id: int, status: TaskStatus = TaskStatus.TODO):
-        return TaskService(self.db).create_task(
+        service = TaskService(self.db)
+        task = service.create_task(
             self.manager,
             TaskCreate(
                 title="Project task",
-                status=status,
+                status=TaskStatus.IN_REVIEW if status == TaskStatus.DONE else status,
                 assignee_id=self.staff.id,
                 department_id=self.department.id,
                 project_id=project_id,
             ),
         )
+        if status == TaskStatus.DONE:
+            return service.update_task(self.manager, task.id, TaskUpdate(status=TaskStatus.DONE))
+        return task
 
     def test_task_can_be_assigned_to_project_member(self) -> None:
         task = self._create_project_task(self.project_a.id)
@@ -80,18 +84,37 @@ class ProjectTaskFlowTests(unittest.TestCase):
     def test_project_progress_recalculates_when_task_done(self) -> None:
         task = self._create_project_task(self.project_a.id)
         self.assertEqual(self.project_a.progress_percentage, 0)
-        TaskService(self.db).update_task(self.manager, task.id, TaskUpdate(status=TaskStatus.DONE))
+        service = TaskService(self.db)
+        service.update_task(self.staff, task.id, TaskUpdate(status=TaskStatus.IN_REVIEW))
+        service.update_task(self.manager, task.id, TaskUpdate(status=TaskStatus.DONE))
         self.db.refresh(self.project_a)
-        self.assertEqual(self.project_a.progress_percentage, 70)
+        self.assertEqual(self.project_a.progress_percentage, 100)
 
     def test_changing_task_project_recalculates_both_projects(self) -> None:
         task = self._create_project_task(self.project_a.id, TaskStatus.DONE)
-        self.assertEqual(self.project_a.progress_percentage, 70)
+        self.assertEqual(self.project_a.progress_percentage, 100)
         TaskService(self.db).update_task(self.manager, task.id, TaskUpdate(project_id=self.project_b.id))
         self.db.refresh(self.project_a)
         self.db.refresh(self.project_b)
         self.assertEqual(self.project_a.progress_percentage, 0)
-        self.assertEqual(self.project_b.progress_percentage, 70)
+        self.assertEqual(self.project_b.progress_percentage, 100)
+
+    def test_team_lead_can_update_another_members_project_task(self) -> None:
+        team_lead = create_user(self.db, self.department, "lead@example.com", UserRole.STAFF)
+        ProjectService(self.db).add_member(
+            self.project_a.id,
+            AddMemberRequest(user_id=team_lead.id, role=ProjectMemberRole.TEAM_LEAD),
+            self.admin,
+        )
+        task = self._create_project_task(self.project_a.id)
+
+        updated = TaskService(self.db).update_task(
+            team_lead,
+            task.id,
+            TaskUpdate(title="Updated by team lead"),
+        )
+
+        self.assertEqual(updated.title, "Updated by team lead")
 
     def test_get_tasks_filter_project_id(self) -> None:
         task_a = self._create_project_task(self.project_a.id)

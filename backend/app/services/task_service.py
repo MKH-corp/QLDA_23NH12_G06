@@ -26,6 +26,11 @@ class TaskService:
     def create_task(self, actor: User, payload: TaskCreate) -> Task:
         if actor.role == UserRole.STAFF and not self._can_manage_project_tasks(payload.project_id, actor):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff cannot create tasks")
+        if payload.status == TaskStatus.DONE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="New tasks cannot start as done; submit them for review first",
+            )
 
         assignee = self._get_user_or_404(payload.assignee_id)
         department = self.department_service.ensure_department_exists(payload.department_id)
@@ -102,6 +107,8 @@ class TaskService:
             return task
         if self._can_manage_project_tasks(task.project_id, actor):
             return task
+        if task.reviewer_id == actor.id:
+            return task
         if task.assignee_id != actor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this task")
         return task
@@ -112,17 +119,23 @@ class TaskService:
         old_assignee_id = task.assignee_id
         old_project_id = task.project_id
 
-        if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
+        can_manage_project_tasks = self._can_manage_project_tasks(task.project_id, actor)
+        is_reviewer = task.reviewer_id == actor.id
+
+        if actor.role == UserRole.STAFF and task.assignee_id != actor.id and not can_manage_project_tasks and not is_reviewer:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to update this task")
 
         data = payload.model_dump(exclude_unset=True)
-        if actor.role == UserRole.STAFF and not self._can_manage_project_tasks(task.project_id, actor):
-            forbidden_fields = set(data) - {"status", "actual_hours"}
+        if actor.role == UserRole.STAFF and not can_manage_project_tasks:
+            allowed_fields = {"status"} if is_reviewer and task.assignee_id != actor.id else {"status", "actual_hours"}
+            forbidden_fields = set(data) - allowed_fields
             if forbidden_fields:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Staff can only update task status and actual hours",
+                    detail="Staff can only update allowed task workflow fields",
                 )
+
+        self._validate_status_transition(task, payload.status, actor)
 
         if "department_id" in data:
             department = self.department_service.ensure_department_exists(data["department_id"])
@@ -281,6 +294,42 @@ class TaskService:
             member
             and member.role in {ProjectMemberRole.PROJECT_MANAGER, ProjectMemberRole.TEAM_LEAD}
         )
+
+    def _validate_status_transition(self, task: Task, new_status: TaskStatus | None, actor: User) -> None:
+        if new_status is None or new_status == task.status:
+            return
+        if task.reviewer_id is None:
+            return
+
+        if new_status == TaskStatus.DONE:
+            if task.status != TaskStatus.IN_REVIEW:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Task must be submitted for review before completion",
+                )
+            if not self._can_approve_task_review(task, actor):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the reviewer or an authorized manager can approve this task",
+                )
+        elif task.status == TaskStatus.IN_REVIEW and new_status in {TaskStatus.TODO, TaskStatus.DOING}:
+            if not self._can_approve_task_review(task, actor):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the reviewer or an authorized manager can return this task",
+                )
+        elif task.status == TaskStatus.IN_REVIEW:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Tasks in review can only be approved or returned",
+            )
+
+    def _can_approve_task_review(self, task: Task, actor: User) -> bool:
+        if actor.role == UserRole.ADMIN or task.reviewer_id == actor.id:
+            return True
+        if actor.role == UserRole.MANAGER and task.department_id == actor.department_id:
+            return True
+        return self._can_manage_project_tasks(task.project_id, actor)
 
     def _recalculate_kpi_for_users(self, *user_ids: int) -> None:
         engine = KpiEngine(self.db)
