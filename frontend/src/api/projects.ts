@@ -2,7 +2,7 @@ import { apiRequest } from './client';
 import { 
   ProjectCreate, ProjectUpdate, ProjectAnalytics, 
   ProjectListItem, DashboardSummary, ProjectOverview,
-  ProjectMember, MemberRole, Milestone, KpiContribution 
+  ProjectMember, MemberRole, Milestone, KpiContribution, MyProject, TeamWorkload
 } from '../types/project';
 
 // Lưu ý: Thêm prefix /api/v1 nếu backend của bạn mount router ở /api/v1
@@ -67,6 +67,18 @@ export const addMember = (projectId: number, userId: number, role: MemberRole) =
     body: JSON.stringify({ user_id: userId, role }),
   });
 
+export const getProjectMembers = (projectId: number) =>
+  apiRequest<ProjectMember[]>(`${BASE_PATH}/${projectId}/members`);
+
+export const addProjectMember = (
+  projectId: number,
+  payload: { user_id: number; role: MemberRole; contribution_share?: number; is_active?: boolean },
+) =>
+  apiRequest<ProjectMember>(`${BASE_PATH}/${projectId}/members`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
 export const removeMember = (projectId: number, userId: number) =>
   apiRequest<void>(`${BASE_PATH}/${projectId}/members/${userId}`, {
     method: 'DELETE',
@@ -77,6 +89,21 @@ export const updateMemberRole = (projectId: number, userId: number, role: Member
     method: 'PUT',
     body: JSON.stringify({ role }),
   });
+
+export const updateProjectMember = (
+  projectId: number,
+  userId: number,
+  payload: { role?: MemberRole; contribution_share?: number; is_active?: boolean },
+) =>
+  apiRequest<ProjectMember>(`${BASE_PATH}/${projectId}/members/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+
+export const getMyProjects = () => apiRequest<MyProject[]>('/me/projects');
+export const getMyProject = (projectId: number) => apiRequest<MyProject>(`/me/projects/${projectId}`);
+export const getManagerProjects = () => apiRequest<ProjectListItem[]>('/manager/projects');
+export const getTeamWorkload = () => apiRequest<TeamWorkload[]>('/manager/team-workload');
 
 // ── Milestones ─────────────────────────────────────────────────────────────
 

@@ -5,10 +5,11 @@ interface TaskCardProps {
   task: Task;
   onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
+  canDelete?: boolean;
   isOverlay?: boolean; // Cờ báo hiệu thẻ Bóng ma
 }
 
-export function TaskCard({ task, onEdit, onDelete, isOverlay = false }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onDelete, canDelete = true, isOverlay = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id.toString(),
     data: { task },
@@ -54,14 +55,14 @@ export function TaskCard({ task, onEdit, onDelete, isOverlay = false }: TaskCard
         >
           Sửa
         </button>
-        <button
+        {canDelete ? <button
           type="button"
           className="button-danger"
           onClick={() => onDelete(task.id)}
           onPointerDown={(e) => e.stopPropagation()}
         >
           Xóa
-        </button>
+        </button> : null}
       </div>
     </article>
   );

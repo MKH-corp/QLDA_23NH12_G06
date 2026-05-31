@@ -1,7 +1,7 @@
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export type ProjectStatus =
-  | 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'REVIEW'
+  | 'PLANNING' | 'ACTIVE' | 'PAUSED' | 'ON_HOLD' | 'REVIEW'
   | 'COMPLETED' | 'CANCELLED' | 'ARCHIVED';
 
 export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -28,6 +28,7 @@ export interface ProjectListItem {
   milestone_count: number;
   milestones_done: number;
   is_overdue: boolean;
+  project_weight: number;
 }
 
 export interface ProjectMember {
@@ -36,6 +37,8 @@ export interface ProjectMember {
   full_name: string;
   email: string;
   role: MemberRole;
+  contribution_share: number;
+  is_active: boolean;
   joined_at: string;
 }
 
@@ -84,6 +87,7 @@ export interface ProjectAnalytics {
   pending_tasks: number;
   doing_tasks: number;
   blocked_tasks: number;
+  review_tasks: number;
   overdue_tasks: number;
   completion_rate: number;
   on_time_rate: number;
@@ -123,6 +127,7 @@ export interface ProjectOverview {
   estimated_hours: number | null;
   actual_hours: number;
   estimated_budget: number | null;
+  project_weight: number;
   department_name: string;
   manager_name: string;
   created_at: string | null;
@@ -148,6 +153,7 @@ export interface ProjectCreate {
   end_date?: string;
   estimated_hours?: number;
   estimated_budget?: number;
+  project_weight?: number;
 }
 
 export interface ProjectUpdate extends Partial<ProjectCreate> {
@@ -160,4 +166,38 @@ export interface DashboardSummary {
   overdue_projects: number;
   avg_progress: number;
   active_projects: number;
+}
+
+export interface MyProject {
+  project_id: number;
+  project_code: string | null;
+  project_name: string;
+  description: string | null;
+  department: string;
+  project_status: ProjectStatus;
+  project_role: MemberRole | null;
+  contribution_share: number;
+  start_date: string | null;
+  due_date: string | null;
+  progress: number;
+  project_health: 'OK' | 'AT_RISK' | 'OVERDUE' | 'COMPLETED' | string;
+  assigned_tasks: number;
+  doing_tasks: number;
+  review_tasks: number;
+  done_tasks: number;
+  overdue_tasks: number;
+}
+
+export interface TeamWorkload {
+  user_id: number;
+  full_name: string;
+  email: string;
+  active_projects: number;
+  assigned_tasks: number;
+  doing_tasks: number;
+  review_tasks: number;
+  overdue_tasks: number;
+  estimated_hours: number;
+  actual_hours: number;
+  workload_status: string;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { getDepartments, getUsers } from '../api/references';
-import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
+import { deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
 import { Board } from '../components/Board';
 import { TaskForm } from '../components/TaskForm';
 import { PaginationControls } from '../components/PaginationControls';
@@ -142,6 +142,7 @@ export function StaffTasksPage() {
                 setFormMode('edit');
               }}
               onDelete={handleDelete}
+              canDelete={false}
               onTaskMove={handleTaskMove}
             />
           )}

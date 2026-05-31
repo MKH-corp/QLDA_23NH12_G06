@@ -6,6 +6,7 @@ import {
 import { ProjectListItem, ProjectCreate, DashboardSummary, ProjectStatus } from '../types/project';
 import { ProjectDetailModal } from '../components/project/ProjectDetailModal';
 import { ProjectFormModal } from '../components/project/ProjectFormModal';
+import { useAuth } from '../context/AuthContext';
 
 const STATUS_COLORS: Record<string, string> = {
   PLANNING:  '#6366f1', ACTIVE: '#10b981', ON_HOLD: '#f59e0b',
@@ -18,6 +19,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export function ProjectManagementPage() {
+  const { user } = useAuth();
   const [projects,    setProjects]    = useState<ProjectListItem[]>([]);
   const [dashboard,   setDashboard]   = useState<DashboardSummary | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -178,6 +180,7 @@ export function ProjectManagementPage() {
               onOpen={() => setSelectedId(p.id)}
               onEdit={() => { setEditProject(p); setIsFormOpen(true); }}
               onDelete={() => handleDelete(p)}
+              canDelete={user?.role === 'admin'}
             />
           ))}
         </div>
@@ -203,9 +206,9 @@ export function ProjectManagementPage() {
 }
 
 // ── ProjectCard component ──────────────────────────────────────────────────
-function ProjectCard({ project: p, onOpen, onEdit, onDelete }: {
+function ProjectCard({ project: p, onOpen, onEdit, onDelete, canDelete }: {
   project: ProjectListItem;
-  onOpen: () => void; onEdit: () => void; onDelete: () => void;
+  onOpen: () => void; onEdit: () => void; onDelete: () => void; canDelete: boolean;
 }) {
   const statusColor   = STATUS_COLORS[p.status]   || '#64748b';
   const priorityColor = PRIORITY_COLORS[p.priority] || '#64748b';
@@ -276,7 +279,9 @@ function ProjectCard({ project: p, onOpen, onEdit, onDelete }: {
           <button
             className="btn-outline"
             style={{ padding: '4px 10px', fontSize: 12, color: '#ef4444', borderColor: '#fca5a5' }}
-            onClick={onDelete}
+            disabled={!canDelete}
+            title={canDelete ? 'Delete project' : 'Only admins can delete projects'}
+            onClick={canDelete ? onDelete : undefined}
           >🗑️</button>
         </div>
       </div>

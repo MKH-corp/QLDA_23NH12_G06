@@ -71,6 +71,11 @@ def delete_project(project_id: int, current_user: CurrentUser, db: DB):
 # Members
 # ═══════════════════════════════════════════════════════════════════════════
 
+@router.get("/{project_id}/members", response_model=list[ProjectMemberRead])
+def list_members(project_id: int, current_user: CurrentUser, db: DB):
+    return ProjectService(db).list_members(project_id, current_user)
+
+
 @router.post("/{project_id}/members", response_model=ProjectMemberRead,
              status_code=status.HTTP_201_CREATED)
 def add_member(

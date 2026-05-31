@@ -55,7 +55,7 @@ class KpiEngineTests(unittest.TestCase):
             base_weight=10,
         )
         snapshot = KpiEngine(self.db).recalculate_monthly_kpi(self.staff.id)
-        self.assertEqual(snapshot.total_score, 5.0)
+        self.assertEqual(snapshot.total_score, 9.0)
         self.assertEqual(snapshot.tasks_overdue, 1)
 
     def test_reopen_count_reduces_score(self) -> None:
@@ -68,11 +68,11 @@ class KpiEngineTests(unittest.TestCase):
             deadline=business_today(),
             done_at=self.now,
             base_weight=10,
-            reopen_count=1,
+            reopen_count=3,
         )
         snapshot = KpiEngine(self.db).recalculate_monthly_kpi(self.staff.id)
-        self.assertEqual(snapshot.total_score, 7.0)
-        self.assertEqual(snapshot.breakdown["reopen_penalty_amount"], -5.0)
+        self.assertEqual(snapshot.total_score, 10.8)
+        self.assertEqual(snapshot.breakdown["reopen_penalty_amount"], -1.2)
 
     def test_task_service_refreshes_snapshot_for_create_reopen_and_delete(self) -> None:
         service = TaskService(self.db)
@@ -93,7 +93,7 @@ class KpiEngineTests(unittest.TestCase):
         self.assertEqual(self._snapshot().total_score, 0.0)
 
         service.update_task(self.manager, created.id, TaskUpdate(status=TaskStatus.DONE))
-        self.assertEqual(self._snapshot().total_score, 7.0)
+        self.assertEqual(self._snapshot().total_score, 12.0)
 
         service.delete_task(self.manager, created.id)
         self.assertEqual(self._snapshot().total_score, 0.0)

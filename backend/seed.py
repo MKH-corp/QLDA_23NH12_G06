@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 from app.core.security import get_password_hash
 from app.db.session import SessionLocal
 from app.models.department import Department
+from app.models.kpi_rule import KpiRule
 from app.models.task import Task, TaskStatus
 from app.models.user import User, UserRole
+from app.services.kpi_engine import KpiEngine
 
 DEFAULT_PASSWORD = "Password@123"
 
@@ -190,12 +192,39 @@ def seed_tasks(db: Session, departments: list[Department], users: list[User]) ->
     db.commit()
 
 
+def seed_kpi_rules(db: Session) -> None:
+    rules = [
+        ("BASE_COMPLETION", "Base score multiplier for completed task weight", 1.0),
+        ("ON_TIME_BONUS", "Multiplier for tasks completed on or before deadline", 1.2),
+        ("OVERDUE_PENALTY", "Multiplier for completed tasks finished after deadline", 0.5),
+        ("REOPEN_PENALTY", "Flat penalty per task reopen", -5.0),
+    ]
+    for code, description, multiplier in rules:
+        rule = db.query(KpiRule).filter(KpiRule.code == code).first()
+        if rule is None:
+            db.add(KpiRule(code=code, description=description, multiplier=multiplier, is_active=True))
+        else:
+            rule.description = description
+            rule.multiplier = multiplier
+            rule.is_active = True
+    db.commit()
+
+
+def recalculate_seed_kpis(db: Session, users: list[User]) -> None:
+    engine = KpiEngine(db)
+    for user in users:
+        if user.is_active:
+            engine.recalculate_monthly_kpi(user.id)
+
+
 def main() -> None:
     db = SessionLocal()
     try:
         departments = seed_departments(db)
         users = seed_users(db, departments)
         seed_tasks(db, departments, users)
+        seed_kpi_rules(db)
+        recalculate_seed_kpis(db, users)
         print("Seed data inserted successfully.")
         print("Test accounts:")
         print(f"- Admin: an@company.local / {DEFAULT_PASSWORD}")

@@ -87,7 +87,9 @@ class UserService:
         if "department_id" in data:
             self.department_service.ensure_department_exists(data["department_id"])
         if "password" in data:
-            data["password_hash"] = get_password_hash(data.pop("password"))
+            password = data.pop("password")
+            if password:
+                data["password_hash"] = get_password_hash(password)
 
         for field, value in data.items():
             setattr(user, field, value)
@@ -107,7 +109,11 @@ class UserService:
         user = self.get_user_by_id(user_id)
         user_email = user.email
         
-        self.repository.delete(user)
+        if not user.is_active:
+            return
+
+        user.is_active = False
+        self.repository.update(user)
 
         # --- GHI LOG: XÓA NHÂN VIÊN ---
         log_system_activity(

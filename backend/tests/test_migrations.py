@@ -19,7 +19,7 @@ class MigrationGraphTests(unittest.TestCase):
             self.assertIsNotNone(down_revision, f"Missing down_revision in {path.name}")
             parents.update(re.findall(r"['\"]([^'\"]+)['\"]", down_revision.group(1)))
 
-        self.assertEqual(revisions - parents, {"20260531_001"})
+        self.assertEqual(revisions - parents, {"20260531_003"})
         self.assertTrue(parents - {"None"} <= revisions)
 
     def test_merge_revision_joins_notification_and_reopen_branches(self) -> None:

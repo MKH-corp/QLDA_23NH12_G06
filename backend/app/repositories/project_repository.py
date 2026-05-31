@@ -105,10 +105,14 @@ class ProjectRepository:
             .group_by(Task.status)
             .all()
         )
-        counts: dict[str, int] = {r[0]: r[1] for r in rows}
+        counts: dict[str, int] = {
+            (r[0].value if hasattr(r[0], "value") else r[0]): r[1]
+            for r in rows
+        }
         total     = sum(counts.values())
         completed = counts.get("done", 0)
         doing     = counts.get("doing", 0)
+        review    = counts.get("in_review", 0)
         blocked   = counts.get("blocked", 0)
         pending   = counts.get("todo", 0)
 
@@ -123,7 +127,7 @@ class ProjectRepository:
             .scalar() or 0
         )
         return dict(
-            total=total, completed=completed, doing=doing,
+            total=total, completed=completed, doing=doing, review=review,
             blocked=blocked, pending=pending, overdue=overdue,
         )
 
@@ -150,6 +154,17 @@ class ProjectRepository:
             .first()
         )
 
+    def list_members(self, project_id: int, active_only: bool = False) -> list[ProjectMember]:
+        query = (
+            self.db.query(ProjectMember)
+            .options(joinedload(ProjectMember.user))
+            .filter(ProjectMember.project_id == project_id)
+            .order_by(ProjectMember.role.asc(), ProjectMember.joined_at.asc())
+        )
+        if active_only:
+            query = query.filter(ProjectMember.is_active == True)
+        return query.all()
+
     def add_member(self, member: ProjectMember) -> ProjectMember:
         self.db.add(member)
         self.db.commit()
@@ -157,12 +172,14 @@ class ProjectRepository:
         return member
 
     def remove_member(self, member: ProjectMember) -> None:
-        self.db.delete(member)
+        member.is_active = False
+        self.db.add(member)
         self.db.commit()
 
     def update_member(self, member: ProjectMember) -> ProjectMember:
         self.db.add(member)
         self.db.commit()
+        self.db.refresh(member)
         return member
 
     # ── Milestone management ────────────────────────────────────────────
@@ -218,7 +235,10 @@ class ProjectRepository:
         """Lấy project mà user là thành viên (kể cả manager)."""
         member_project_ids = (
             self.db.query(ProjectMember.project_id)
-            .filter(ProjectMember.user_id == user_id)
+            .filter(
+                ProjectMember.user_id == user_id,
+                ProjectMember.is_active == True,
+            )
             .subquery()
         )
         return (

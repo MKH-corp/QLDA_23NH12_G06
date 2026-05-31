@@ -8,9 +8,10 @@ interface ColumnProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
+  canDelete?: boolean;
 }
 
-export function Column({ id, title, tasks, onEdit, onDelete }: ColumnProps) {
+export function Column({ id, title, tasks, onEdit, onDelete, canDelete = true }: ColumnProps) {
   // 2. Khai báo hook useDroppable
   const { isOver, setNodeRef } = useDroppable({
     id: id, // Phải truyền đúng id của cột vào đây
@@ -41,6 +42,7 @@ export function Column({ id, title, tasks, onEdit, onDelete }: ColumnProps) {
               task={task} 
               onEdit={onEdit} 
               onDelete={onDelete} 
+              canDelete={canDelete}
             />
           ))
         )}

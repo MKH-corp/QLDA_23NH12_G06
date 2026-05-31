@@ -15,11 +15,6 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
   const [managers, setManagers] = useState<Array<{ id: number; full_name: string }>>([]);
   const [deptLoading, setDeptLoading] = useState(true);
 
-  const getDefaultDepartmentId = (): number | undefined => {
-    // Fetch from localStorage or use first available
-    return undefined; // Will be loaded from departments list
-  };
-
   const [formData, setFormData] = useState<ProjectCreate>({
     name: '',
     description: '',

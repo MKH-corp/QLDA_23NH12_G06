@@ -22,6 +22,7 @@ from app.db.base import Base
 class ProjectStatus(str, enum.Enum):
     PLANNING = "PLANNING"
     ACTIVE = "ACTIVE"
+    PAUSED = "PAUSED"
     ON_HOLD = "ON_HOLD"
     REVIEW = "REVIEW"
     COMPLETED = "COMPLETED"
@@ -47,8 +48,9 @@ class ProjectMemberRole(str, enum.Enum):
 # Chỉ các transition này mới được phép — validate ở service layer
 ALLOWED_TRANSITIONS: dict[ProjectStatus, set[ProjectStatus]] = {
     ProjectStatus.PLANNING:  {ProjectStatus.ACTIVE, ProjectStatus.CANCELLED},
-    ProjectStatus.ACTIVE:    {ProjectStatus.ON_HOLD, ProjectStatus.REVIEW,
+    ProjectStatus.ACTIVE:    {ProjectStatus.PAUSED, ProjectStatus.ON_HOLD, ProjectStatus.REVIEW,
                               ProjectStatus.COMPLETED, ProjectStatus.CANCELLED},
+    ProjectStatus.PAUSED:    {ProjectStatus.ACTIVE, ProjectStatus.CANCELLED},
     ProjectStatus.ON_HOLD:   {ProjectStatus.ACTIVE, ProjectStatus.CANCELLED},
     ProjectStatus.REVIEW:    {ProjectStatus.ACTIVE, ProjectStatus.COMPLETED,
                               ProjectStatus.CANCELLED},
@@ -60,6 +62,9 @@ ALLOWED_TRANSITIONS: dict[ProjectStatus, set[ProjectStatus]] = {
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_projects_code"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -87,6 +92,7 @@ class Project(Base):
     estimated_hours  = Column(Float, nullable=True)
     actual_hours     = Column(Float, nullable=False, server_default="0")
     estimated_budget = Column(Float, nullable=True)
+    project_weight   = Column(Float, nullable=False, server_default="1")
 
     # ── Liên kết tổ chức ──────────────────────────────────────────────
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
@@ -133,6 +139,8 @@ class ProjectMember(Base):
     )
     joined_at  = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     added_by   = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    contribution_share = Column(Float, nullable=False, server_default="0")
+    is_active = Column(Boolean, nullable=False, server_default="true")
 
     project    = relationship("Project",  back_populates="members")
     user       = relationship("User",     foreign_keys=[user_id],  lazy="joined")

@@ -44,8 +44,11 @@ class TaskService:
             base_weight=payload.base_weight,
             creator_id=actor.id,
             assignee_id=payload.assignee_id,
+            reviewer_id=payload.reviewer_id or actor.id,
             department_id=payload.department_id,
             project_id=payload.project_id,
+            estimated_hours=payload.estimated_hours,
+            actual_hours=payload.actual_hours,
         )
         if task.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
@@ -120,6 +123,10 @@ class TaskService:
             if actor.role == UserRole.MANAGER and assignee.department_id != actor.department_id:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to assign tasks outside your department")
 
+        if "reviewer_id" in data and data["reviewer_id"] is not None:
+            reviewer = self._get_user_or_404(data["reviewer_id"])
+            self._ensure_assignee_matches_department(reviewer, data.get("department_id", task.department_id))
+
         if "project_id" in data:
             self._ensure_project_is_usable(data["project_id"], data.get("department_id", task.department_id), actor)
 
@@ -132,6 +139,8 @@ class TaskService:
         # ANTI-CHEATING: Phát hiện Reopen
         elif old_status == TaskStatus.DONE and payload.status is not None and payload.status != TaskStatus.DONE:
             task.done_at = None
+            task.reopen_count = (task.reopen_count or 0) + 1
+        elif old_status == TaskStatus.IN_REVIEW and payload.status in {TaskStatus.TODO, TaskStatus.DOING}:
             task.reopen_count = (task.reopen_count or 0) + 1
 
         updated_task = self.repository.update(task)
@@ -158,8 +167,8 @@ class TaskService:
         assignee_id = task.assignee_id
         project_id = task.project_id
 
-        if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this task")
+        if actor.role == UserRole.STAFF:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff cannot delete tasks")
 
         self.repository.delete(task)
         self._recalculate_kpi_for_users(assignee_id)

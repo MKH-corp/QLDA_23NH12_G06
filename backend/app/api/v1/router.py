@@ -10,6 +10,8 @@ from app.api.v1.reports     import router as reports_router
 from app.api.v1.activities  import router as activities_router
 from app.api.v1             import dashboard, kpi, notifications, ai
 from app.api.v1.projects    import router as projects_router
+from app.api.v1.me          import router as me_router
+from app.api.v1.manager     import router as manager_router
 
 api_router = APIRouter()
 
@@ -21,6 +23,8 @@ api_router.include_router(departments_router)
 api_router.include_router(users_router)
 api_router.include_router(dashboard.router,    prefix="/dashboard",     tags=["dashboard"])
 api_router.include_router(projects_router,     prefix="/projects",      tags=["projects"])
+api_router.include_router(me_router)
+api_router.include_router(manager_router)
 api_router.include_router(kpi.router,          prefix="/kpi",           tags=["kpi"])
 api_router.include_router(notifications.router,prefix="/notifications", tags=["notifications"])
 api_router.include_router(activities_router,   prefix="/activities",    tags=["activities"])

@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, UTC
 from app.models.task import Task, TaskStatus
 from app.models.kpi_snapshot import KpiSnapshot
@@ -29,7 +30,7 @@ class KpiEngine:
         period_start, period_end = business_month_utc_range(date_ref)
 
         # 1. Quét toàn bộ Task đã Done trong tháng của User
-        done_tasks = self.db.query(Task).filter(
+        done_tasks = self.db.query(Task).options(joinedload(Task.project)).filter(
             Task.assignee_id == user_id,
             Task.status == TaskStatus.DONE,
             Task.done_at >= period_start,
@@ -52,7 +53,8 @@ class KpiEngine:
         # 3. ANTI-CHEATING & SCORING LOGIC
         for task in done_tasks:
             # Lấy thẳng base_weight làm hệ số ưu tiên (mặc định 1.0 nếu rỗng)
-            weight = float(task.base_weight) if task.base_weight else 1.0
+            weight = float(task.estimated_hours or task.base_weight or 1.0)
+            project_weight = float(task.project.project_weight or 1.0) if task.project else 1.0
             
             # Tính điểm gốc = hệ số * điểm chuẩn
             task_score = weight * self.rules['BASE_COMPLETION']
@@ -66,18 +68,19 @@ class KpiEngine:
                     breakdown["on_time_bonus"] += bonus
                     breakdown["on_time_count"] += 1
                 else:
-                    penalty = task_score * (1 - self.rules['OVERDUE_PENALTY'])
+                    days_late = max((completion_business_date(task.done_at) - task.deadline).days, 1)
+                    penalty = task_score * min(days_late * 0.05, 0.5)
                     task_score -= penalty
                     breakdown["overdue_penalty_amount"] -= penalty
                     breakdown["overdue_count"] += 1
 
             # Check Reopen Abuse
-            if task.reopen_count and task.reopen_count > 0:
-                reopen_penalty = task.reopen_count * self.rules['REOPEN_PENALTY']
-                task_score += reopen_penalty # Penalty is negative
-                breakdown["reopen_penalty_amount"] += reopen_penalty
+            if task.reopen_count and task.reopen_count > 2:
+                reopen_penalty = task_score * 0.1
+                task_score -= reopen_penalty
+                breakdown["reopen_penalty_amount"] -= reopen_penalty
 
-            total_score += max(task_score, 0) # Không để task âm điểm quá nặng kéo sập hệ thống
+            total_score += max(task_score * project_weight, 0) # Không để task âm điểm quá nặng kéo sập hệ thống
 
         for key in (
             "base_score",
@@ -87,15 +90,7 @@ class KpiEngine:
         ):
             breakdown[key] = round(breakdown[key], 2)
 
-        # 4. UPSERT SNAPSHOT TABLE (Tối ưu truy vấn)
-        snapshot = self.db.query(KpiSnapshot).filter(
-            KpiSnapshot.user_id == user_id,
-            KpiSnapshot.period_key == period_key
-        ).first()
-
-        if not snapshot:
-            snapshot = KpiSnapshot(user_id=user_id, period_type="MONTHLY", period_key=period_key)
-            self.db.add(snapshot)
+        snapshot = self._get_or_create_snapshot(user_id, period_key)
 
         snapshot.total_score = round(total_score, 2)
         snapshot.tasks_completed = breakdown["tasks_analyzed"]
@@ -103,4 +98,28 @@ class KpiEngine:
         snapshot.breakdown = breakdown
 
         self.db.commit()
+        return snapshot
+
+    def _get_or_create_snapshot(self, user_id: int, period_key: str) -> KpiSnapshot:
+        snapshot = self.db.query(KpiSnapshot).filter(
+            KpiSnapshot.user_id == user_id,
+            KpiSnapshot.period_type == "MONTHLY",
+            KpiSnapshot.period_key == period_key,
+        ).first()
+        if snapshot:
+            return snapshot
+
+        snapshot = KpiSnapshot(user_id=user_id, period_type="MONTHLY", period_key=period_key)
+        self.db.add(snapshot)
+        try:
+            self.db.flush()
+        except IntegrityError:
+            self.db.rollback()
+            snapshot = self.db.query(KpiSnapshot).filter(
+                KpiSnapshot.user_id == user_id,
+                KpiSnapshot.period_type == "MONTHLY",
+                KpiSnapshot.period_key == period_key,
+            ).first()
+            if snapshot is None:
+                raise
         return snapshot

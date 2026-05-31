@@ -19,10 +19,11 @@ interface BoardProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (taskId: number) => void;
+  canDelete?: boolean;
   onTaskMove?: (taskId: number, newStatus: Task['status']) => void;
 }
 
-export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
+export function Board({ tasks, onEdit, onDelete, canDelete = true, onTaskMove }: BoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const sensors = useSensors(
@@ -77,6 +78,7 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
             tasks={tasks.filter((task) => task.status === column.key)}
             onEdit={onEdit}
             onDelete={onDelete}
+            canDelete={canDelete}
           />
         ))}
       </div>
@@ -88,6 +90,7 @@ export function Board({ tasks, onEdit, onDelete, onTaskMove }: BoardProps) {
               task={activeTask} 
               onEdit={onEdit} 
               onDelete={onDelete} 
+              canDelete={canDelete}
               isOverlay={true} 
             />
           </div>
