@@ -7,9 +7,11 @@ import { ProjectListItem, ProjectCreate, DashboardSummary, ProjectStatus } from 
 import { ProjectDetailModal } from '../components/project/ProjectDetailModal';
 import { ProjectFormModal } from '../components/project/ProjectFormModal';
 import { useAuth } from '../context/AuthContext';
+import { getDepartments, getUsers } from '../api/references';
+import type { DepartmentOption, UserOption } from '../types/reference';
 
 const STATUS_COLORS: Record<string, string> = {
-  PLANNING:  '#6366f1', ACTIVE: '#10b981', ON_HOLD: '#f59e0b',
+  PLANNING:  '#6366f1', ACTIVE: '#10b981', PAUSED: '#f59e0b', ON_HOLD: '#f59e0b',
   REVIEW:    '#3b82f6', COMPLETED: '#22c55e',
   CANCELLED: '#ef4444', ARCHIVED:  '#94a3b8',
 };
@@ -25,7 +27,11 @@ export function ProjectManagementPage() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [managerFilter, setManagerFilter] = useState('');
   const [searchTerm,  setSearchTerm]  = useState('');
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [managers, setManagers] = useState<UserOption[]>([]);
   const [selectedId,  setSelectedId]  = useState<number | null>(null);
   const [isFormOpen,  setIsFormOpen]  = useState(false);
   const [editProject, setEditProject] = useState<ProjectListItem | null>(null);
@@ -40,7 +46,11 @@ export function ProjectManagementPage() {
     setLoading(true); setError(null);
     try {
       const [pList, dash] = await Promise.all([
-        getProjects({ status: statusFilter || undefined }),
+        getProjects({
+          status: statusFilter || undefined,
+          departmentId: departmentFilter ? Number(departmentFilter) : undefined,
+          managerId: managerFilter ? Number(managerFilter) : undefined,
+        }),
         getProjectDashboard(),
       ]);
       setProjects(pList);
@@ -50,9 +60,20 @@ export function ProjectManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [departmentFilter, managerFilter, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    Promise.all([getDepartments(), getUsers()])
+      .then(([departmentData, userData]) => {
+        setDepartments(departmentData);
+        setManagers(userData.filter(item => item.role === 'manager' || item.role === 'admin'));
+      })
+      .catch(() => {
+        setDepartments([]);
+        setManagers([]);
+      });
+  }, []);
 
   const filtered = projects.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -73,10 +94,11 @@ export function ProjectManagementPage() {
   };
 
   const handleDelete = async (p: ProjectListItem) => {
-    if (!confirm(`Xóa project "${p.name}"?`)) return;
+    const action = p.total_tasks > 0 ? 'archive' : 'xóa';
+    if (!confirm(`${action} project "${p.name}"?`)) return;
     try {
       await deleteProject(p.id);
-      showToast('✅ Đã xóa project');
+      showToast(p.total_tasks > 0 ? 'Đã archive project' : 'Đã xóa project');
       load();
     } catch (e: any) {
       setError(e.message);
@@ -130,7 +152,7 @@ export function ProjectManagementPage() {
       )}
 
       {/* ── Filters ─────────────────────────────────────────────────── */}
-      <div className="glass-panel" style={{ display: 'flex', gap: 12, marginBottom: 20, padding: '14px 20px', alignItems: 'center' }}>
+      <div className="glass-panel" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20, padding: '14px 20px', alignItems: 'center' }}>
         <div style={{ flex: 1, display: 'flex', gap: 8, background: '#f1f5f9', borderRadius: 99, padding: '8px 14px', alignItems: 'center' }}>
           <span>🔍</span>
           <input
@@ -146,8 +168,28 @@ export function ProjectManagementPage() {
           style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}
         >
           <option value="">Tất cả trạng thái</option>
-          {['PLANNING','ACTIVE','ON_HOLD','REVIEW','COMPLETED','CANCELLED','ARCHIVED'].map(s => (
+          {['PLANNING','ACTIVE','PAUSED','ON_HOLD','REVIEW','COMPLETED','CANCELLED','ARCHIVED'].map(s => (
             <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <select
+          value={departmentFilter}
+          onChange={e => setDepartmentFilter(e.target.value)}
+          style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}
+        >
+          <option value="">Tất cả phòng ban</option>
+          {departments.map(department => (
+            <option key={department.id} value={department.id}>{department.name}</option>
+          ))}
+        </select>
+        <select
+          value={managerFilter}
+          onChange={e => setManagerFilter(e.target.value)}
+          style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}
+        >
+          <option value="">Tất cả manager</option>
+          {managers.map(manager => (
+            <option key={manager.id} value={manager.id}>{manager.full_name}</option>
           ))}
         </select>
         <button className="btn-outline" onClick={load}>🔄 Tải lại</button>
@@ -213,6 +255,7 @@ function ProjectCard({ project: p, onOpen, onEdit, onDelete, canDelete }: {
   const statusColor   = STATUS_COLORS[p.status]   || '#64748b';
   const priorityColor = PRIORITY_COLORS[p.priority] || '#64748b';
   const pct = Math.round(p.progress_percentage);
+  const taskPct = Math.round(p.task_completion_percentage);
 
   return (
     <div
@@ -258,7 +301,7 @@ function ProjectCard({ project: p, onOpen, onEdit, onDelete, canDelete }: {
 
       {/* Stats row */}
       <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b', marginBottom: 14 }}>
-        <span>✅ {p.completed_tasks}/{p.total_tasks} task</span>
+        <span>✅ {p.completed_tasks}/{p.total_tasks} task ({taskPct}%)</span>
         {p.overdue_tasks > 0 && <span style={{ color: '#ef4444' }}>⚠️ {p.overdue_tasks} quá hạn</span>}
         <span>👥 {p.member_count}</span>
         <span>🎯 {p.milestones_done}/{p.milestone_count} milestone</span>
@@ -292,6 +335,7 @@ function ProjectCard({ project: p, onOpen, onEdit, onDelete, canDelete }: {
           fontSize: 10, fontWeight: 700, color: priorityColor,
           background: priorityColor + '18', padding: '2px 8px', borderRadius: 99,
         }}>{p.priority}</span>
+        {p.start_date && <span style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(p.start_date).toLocaleDateString('vi-VN')} -</span>}
         {p.end_date && (
           <span style={{ fontSize: 11, color: '#94a3b8' }}>
             📅 {new Date(p.end_date).toLocaleDateString('vi-VN')}

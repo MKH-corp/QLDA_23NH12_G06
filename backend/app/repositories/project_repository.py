@@ -6,7 +6,7 @@ ProjectRepository — tất cả query được tối ưu:
 """
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.project import (
@@ -80,6 +80,38 @@ class ProjectRepository:
             q = q.filter(Project.status == status)
         if manager_id:
             q = q.filter(Project.manager_id == manager_id)
+        return q.offset(skip).limit(limit).all()
+
+    def list_for_manager(
+        self,
+        manager_id: int,
+        department_id: int,
+        filter_department_id: int | None = None,
+        status: str | None = None,
+        filter_manager_id: int | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[Project]:
+        q = (
+            self.db.query(Project)
+            .options(
+                joinedload(Project.department),
+                joinedload(Project.manager),
+            )
+            .filter(
+                or_(
+                    Project.department_id == department_id,
+                    Project.manager_id == manager_id,
+                )
+            )
+            .order_by(Project.created_at.desc())
+        )
+        if filter_department_id:
+            q = q.filter(Project.department_id == filter_department_id)
+        if status:
+            q = q.filter(Project.status == status)
+        if filter_manager_id:
+            q = q.filter(Project.manager_id == filter_manager_id)
         return q.offset(skip).limit(limit).all()
 
     def update(self, project: Project) -> Project:

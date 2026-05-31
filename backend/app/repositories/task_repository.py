@@ -24,6 +24,7 @@ class TaskRepository:
         overdue: bool | None = None,
         department_id: int | None = None,
         assignee_id: int | None = None,
+        project_id: int | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[Task], int]:
@@ -40,6 +41,9 @@ class TaskRepository:
 
         if assignee_id is not None:
             stmt = stmt.where(Task.assignee_id == assignee_id)
+
+        if project_id is not None:
+            stmt = stmt.where(Task.project_id == project_id)
 
         count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
         total = self.db.scalar(count_stmt) or 0

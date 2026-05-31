@@ -7,14 +7,17 @@ interface BackendTask {
   id: number;
   title: string;
   description?: string | null;
-  status: 'todo' | 'doing' | 'blocked' | 'done';
+  status: 'todo' | 'doing' | 'in_review' | 'blocked' | 'done';
   deadline?: string | null;
   done_at?: string | null;
   base_weight: number;
   creator_id: number;
   assignee_id: number;
+  reviewer_id?: number | null;
   department_id: number;
   project_id?: number | null;
+  estimated_hours?: number | null;
+  actual_hours?: number;
 }
 
 function mapBackendTask(task: BackendTask): Task {
@@ -50,11 +53,12 @@ function toUpdatePayload(values: TaskFormValues): Partial<TaskPayload> {
   };
 }
 
-export async function getTasks(filters?: { status?: string; overdue?: boolean; assigneeId?: number; page?: number; pageSize?: number }): Promise<PageResponse<Task>> {
+export async function getTasks(filters?: { status?: string; overdue?: boolean; assigneeId?: number; projectId?: number; page?: number; pageSize?: number }): Promise<PageResponse<Task>> {
   const params = new URLSearchParams();
   if (filters?.status) params.set('status', filters.status);
   if (typeof filters?.overdue === 'boolean') params.set('overdue', String(filters.overdue));
   if (filters?.assigneeId) params.set('assignee_id', String(filters.assigneeId));
+  if (filters?.projectId) params.set('project_id', String(filters.projectId));
   params.set('page', String(filters?.page ?? 1));
   params.set('page_size', String(filters?.pageSize ?? 20));
   const query = params.toString() ? `?${params.toString()}` : '';

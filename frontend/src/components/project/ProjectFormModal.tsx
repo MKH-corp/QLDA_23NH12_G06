@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ProjectCreate, ProjectListItem, ProjectStatus, ProjectPriority } from '../../types/project';
 import { getDepartments, getUsers } from '../../api/references';
+import type { UserOption } from '../../types/reference';
 
 interface ProjectFormModalProps {
   project: ProjectListItem | null;
@@ -12,7 +13,7 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [departments, setDepartments] = useState<Array<{ id: number; name: string }>>([]);
-  const [managers, setManagers] = useState<Array<{ id: number; full_name: string }>>([]);
+  const [managers, setManagers] = useState<UserOption[]>([]);
   const [deptLoading, setDeptLoading] = useState(true);
 
   const [formData, setFormData] = useState<ProjectCreate>({
@@ -25,6 +26,9 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
     end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     department_id: undefined,
     manager_id: undefined,
+    estimated_hours: undefined,
+    estimated_budget: undefined,
+    project_weight: 1,
   });
 
   // Load departments and managers on mount
@@ -75,6 +79,9 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
           : '',
         department_id: project.department_id ?? undefined,
         manager_id: project.manager_id ?? undefined,
+        estimated_hours: project.estimated_hours ?? undefined,
+        estimated_budget: project.estimated_budget ?? undefined,
+        project_weight: project.project_weight,
       });
     }
   }, [project]);
@@ -235,7 +242,7 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
                     boxSizing: 'border-box',
                   }}
                 >
-                  {['PLANNING', 'ACTIVE', 'ON_HOLD', 'REVIEW', 'COMPLETED', 'CANCELLED', 'ARCHIVED'].map(s => (
+                  {['PLANNING', 'ACTIVE', 'PAUSED', 'ON_HOLD', 'REVIEW', 'COMPLETED', 'CANCELLED', 'ARCHIVED'].map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -348,10 +355,50 @@ export function ProjectFormModal({ project, onClose, onSubmit }: ProjectFormModa
                 }}
               >
                 <option value="">No manager</option>
-                {managers.map(manager => (
+                {managers.filter(manager =>
+                  manager.role === 'admin' || manager.department_id === formData.department_id
+                ).map(manager => (
                   <option key={manager.id} value={manager.id}>{manager.full_name}</option>
                 ))}
               </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  Giờ dự kiến
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={formData.estimated_hours ?? ''}
+                  onChange={e => handleChange('estimated_hours', e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  Ngân sách
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={formData.estimated_budget ?? ''}
+                  onChange={e => handleChange('estimated_budget', e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  Trọng số
+                </label>
+                <input
+                  type="number"
+                  min={0.1}
+                  max={10}
+                  step={0.1}
+                  value={formData.project_weight ?? 1}
+                  onChange={e => handleChange('project_weight', Number(e.target.value))}
+                />
+              </div>
             </div>
 
             {/* Buttons */}

@@ -18,11 +18,11 @@ export function AppShell() {
         </div>
 
         <nav className="sidebar__nav">
-          {user?.role === 'staff' ? <NavLink to="/staff/projects">My Projects</NavLink> : null}
+          {user?.role === 'staff' ? <NavLink to="/staff/projects">Dự án của tôi</NavLink> : null}
           {user?.role === 'staff' ? <NavLink to="/staff/tasks">Công việc của tôi</NavLink> : null}
           {user?.role === 'manager' ? <NavLink to="/manager/tasks">Công việc của nhóm</NavLink> : null}
           {user?.role === 'manager' ? <NavLink to="/manager/projects">Projects</NavLink> : null}
-          {user?.role === 'manager' ? <NavLink to="/manager/my-projects">My Projects</NavLink> : null}
+          {user?.role === 'manager' ? <NavLink to="/manager/my-projects">Dự án của tôi</NavLink> : null}
           {user?.role === 'manager' ? <NavLink to="/manager/reports">Reports</NavLink> : null}
           {user?.role === 'manager' ? <NavLink to="/manager/kpi">KPI</NavLink> : null}
           {user?.role === 'admin' ? (

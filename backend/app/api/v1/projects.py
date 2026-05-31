@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_authenticated_user
 from app.models.user import User
 from app.schemas.project import (
-    AddMemberRequest, MilestoneCreate, MilestoneRead,
+    AddMemberRequest, AssignableUserRead, MilestoneCreate, MilestoneRead, MilestoneUpdate,
     ProjectCreate, ProjectKpiContribution, ProjectListItem,
-    ProjectMemberRead, ProjectOverview, ProjectUpdate,
-    UpdateMemberRoleRequest, ProjectAnalytics,
+    ProjectMemberRead, ProjectOverview, ProjectReportRead, ProjectUpdate,
+    TaskSummary, UpdateMemberRoleRequest, ProjectAnalytics,
 )
 from app.services.project_service import ProjectService
 
@@ -30,11 +30,19 @@ DB = Annotated[Session, Depends(get_db)]
 def list_projects(
     current_user: CurrentUser, db: DB,
     department_id: int | None = Query(default=None),
+    manager_id: int | None    = Query(default=None),
     status: str | None       = Query(default=None),
     skip: int                = Query(default=0, ge=0),
     limit: int               = Query(default=50, ge=1, le=200),
 ):
-    return ProjectService(db).list_projects(current_user, department_id, status, skip, limit)
+    return ProjectService(db).list_projects(
+        current_user,
+        department_id=department_id,
+        status=status,
+        manager_id=manager_id,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.post("/", response_model=ProjectListItem, status_code=status.HTTP_201_CREATED)
@@ -74,6 +82,16 @@ def delete_project(project_id: int, current_user: CurrentUser, db: DB):
 @router.get("/{project_id}/members", response_model=list[ProjectMemberRead])
 def list_members(project_id: int, current_user: CurrentUser, db: DB):
     return ProjectService(db).list_members(project_id, current_user)
+
+
+@router.get("/{project_id}/assignable-users", response_model=list[AssignableUserRead])
+def list_assignable_users(project_id: int, current_user: CurrentUser, db: DB):
+    return ProjectService(db).list_assignable_users(project_id, current_user)
+
+
+@router.get("/{project_id}/tasks", response_model=list[TaskSummary])
+def list_project_tasks(project_id: int, current_user: CurrentUser, db: DB):
+    return ProjectService(db).list_project_tasks(project_id, current_user)
 
 
 @router.post("/{project_id}/members", response_model=ProjectMemberRead,
@@ -124,6 +142,22 @@ def complete_milestone(
     return ProjectService(db).complete_milestone(project_id, milestone_id, current_user)
 
 
+@router.put("/{project_id}/milestones/{milestone_id}", response_model=MilestoneRead)
+def update_milestone(
+    project_id: int, milestone_id: int, payload: MilestoneUpdate,
+    current_user: CurrentUser, db: DB,
+):
+    return ProjectService(db).update_milestone(project_id, milestone_id, payload, current_user)
+
+
+@router.delete("/{project_id}/milestones/{milestone_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_milestone(
+    project_id: int, milestone_id: int,
+    current_user: CurrentUser, db: DB,
+):
+    ProjectService(db).delete_milestone(project_id, milestone_id, current_user)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Analytics
 # ═══════════════════════════════════════════════════════════════════════════
@@ -131,6 +165,11 @@ def complete_milestone(
 @router.get("/{project_id}/analytics", response_model=ProjectAnalytics)
 def get_project_analytics(project_id: int, current_user: CurrentUser, db: DB):
     return ProjectService(db).get_analytics(project_id, current_user)
+
+
+@router.get("/{project_id}/report", response_model=ProjectReportRead)
+def get_project_report(project_id: int, current_user: CurrentUser, db: DB):
+    return ProjectService(db).get_report(project_id, current_user)
 
 
 @router.get("/{project_id}/kpi", response_model=ProjectKpiContribution)

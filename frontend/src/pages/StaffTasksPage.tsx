@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { getDepartments, getUsers } from '../api/references';
-import { deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
+import { deleteTask, getTasks, updateTaskStatus } from '../api/tasks';
 import { Board } from '../components/Board';
 import { TaskForm } from '../components/TaskForm';
 import { PaginationControls } from '../components/PaginationControls';
@@ -72,7 +72,7 @@ export function StaffTasksPage() {
   const handleSubmit = async (values: TaskFormValues) => {
     try {
       if (selectedTask) {
-        const updated = await updateTask(selectedTask.id, values);
+        const updated = await updateTaskStatus(selectedTask.id, values.status);
         setTasks((prev) => prev.map((task) => (task.id === updated.id ? updated : task)));
       }
       setSelectedTask(null);
@@ -156,6 +156,9 @@ export function StaffTasksPage() {
               departments={departments.filter((department) => department.id === user?.department_id)}
               users={visibleUsers}
               referencesLoading={referencesLoading}
+              hideProject
+              hideDepartment
+              hideAssignee
               onSubmit={handleSubmit}
               onCancel={() => {
                 setSelectedTask(null);

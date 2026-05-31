@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { getDepartments, getUsers } from '../api/references';
 import { createTask, deleteTask, getTasks, updateTask, updateTaskStatus } from '../api/tasks';
+import { getAssignableUsers, getProjects } from '../api/projects';
 import { Board } from '../components/Board';
 import { TaskForm } from '../components/TaskForm';
 import { PaginationControls } from '../components/PaginationControls';
 import type { DepartmentOption, UserOption } from '../types/reference';
 import type { Task, TaskFormValues } from '../types/task';
+import type { AssignableUser, ProjectListItem } from '../types/project';
 import { useAuth } from '../context/AuthContext';
 
 export function ManagerTasksPage() {
@@ -14,6 +16,8 @@ export function ManagerTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [projectMembers, setProjectMembers] = useState<AssignableUser[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [loading, setLoading] = useState(true);
@@ -22,6 +26,7 @@ export function ManagerTasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [overdueFilter, setOverdueFilter] = useState<'all' | 'true'>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(0);
   const [total, setTotal] = useState(0);
@@ -29,9 +34,10 @@ export function ManagerTasksPage() {
   const loadReferences = async () => {
     setReferencesLoading(true);
     try {
-      const [departmentData, userData] = await Promise.all([getDepartments(), getUsers()]);
+      const [departmentData, userData, projectData] = await Promise.all([getDepartments(), getUsers(), getProjects()]);
       setDepartments(departmentData);
       setUsers(userData);
+      setProjects(projectData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu tham chiếu');
     } finally {
@@ -47,6 +53,7 @@ export function ManagerTasksPage() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         overdue: overdueFilter === 'true' ? true : undefined,
         assigneeId: assigneeFilter === 'all' ? undefined : Number(assigneeFilter),
+        projectId: projectFilter === 'all' ? undefined : Number(projectFilter),
         page,
       });
       setTasks(data.items);
@@ -65,7 +72,16 @@ export function ManagerTasksPage() {
 
   useEffect(() => {
     void loadTasks();
-  }, [statusFilter, assigneeFilter, overdueFilter, page]);
+  }, [statusFilter, assigneeFilter, overdueFilter, projectFilter, page]);
+
+  const handleProjectChange = async (projectId: number | null) => {
+    try {
+      setProjectMembers(projectId ? await getAssignableUsers(projectId) : []);
+    } catch (err) {
+      setProjectMembers([]);
+      setError(err instanceof Error ? err.message : 'Không tải được thành viên project');
+    }
+  };
 
   const visibleUsers = useMemo(() => users.filter((item) => item.department_id === user?.department_id), [users, user?.department_id]);
   const handleSubmit = async (values: TaskFormValues) => {
@@ -145,6 +161,12 @@ export function ManagerTasksPage() {
             <option value="all">Tất cả thời hạn</option>
             <option value="true">Chỉ công việc quá hạn</option>
           </select>
+          <select value={projectFilter} onChange={(event) => { setProjectFilter(event.target.value); setPage(1); }}>
+            <option value="all">Tất cả project</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{project.code || project.name}</option>
+            ))}
+          </select>
           <button type="button" className="button-secondary" onClick={() => void Promise.all([loadTasks(), loadReferences()])}>
             Tải lại
           </button>
@@ -163,6 +185,7 @@ export function ManagerTasksPage() {
               onEdit={(task) => {
                 setSelectedTask(task);
                 setFormMode('edit');
+                void handleProjectChange(task.project_id ?? null);
               }}
               onDelete={handleDelete}
               onTaskMove={handleTaskMove}
@@ -177,6 +200,9 @@ export function ManagerTasksPage() {
             departments={departments.filter((department) => department.id === user?.department_id)}
             users={visibleUsers}
             referencesLoading={referencesLoading}
+            projects={projects}
+            projectMembers={projectMembers}
+            onProjectChange={(projectId) => void handleProjectChange(projectId)}
             onSubmit={handleSubmit}
             onCancel={() => {
               setSelectedTask(null);
