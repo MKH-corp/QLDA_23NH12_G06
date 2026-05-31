@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.task import Task, TaskStatus
-from app.models.project import Project
+from app.models.project import Project, ProjectMember, ProjectMemberRole, ProjectStatus
 from app.models.user import User, UserRole
 from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
@@ -24,17 +24,25 @@ class TaskService:
         self.department_service = DepartmentService(db)
 
     def create_task(self, actor: User, payload: TaskCreate) -> Task:
-        if actor.role == UserRole.STAFF:
+        if actor.role == UserRole.STAFF and not self._can_manage_project_tasks(payload.project_id, actor):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff cannot create tasks")
+        if payload.status == TaskStatus.DONE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="New tasks cannot start as done; submit them for review first",
+            )
 
         assignee = self._get_user_or_404(payload.assignee_id)
         department = self.department_service.ensure_department_exists(payload.department_id)
         self._ensure_assignee_matches_department(assignee, department.id)
+        if payload.reviewer_id is not None:
+            reviewer = self._get_user_or_404(payload.reviewer_id)
+            self._ensure_assignee_matches_department(reviewer, department.id)
 
         if actor.role == UserRole.MANAGER and department.id != actor.department_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to create tasks outside your department")
 
-        self._ensure_project_is_usable(payload.project_id, department.id, actor)
+        self._ensure_project_is_usable(payload.project_id, department.id, payload.assignee_id, actor)
 
         task = Task(
             title=payload.title,
@@ -44,8 +52,11 @@ class TaskService:
             base_weight=payload.base_weight,
             creator_id=actor.id,
             assignee_id=payload.assignee_id,
+            reviewer_id=payload.reviewer_id or actor.id,
             department_id=payload.department_id,
             project_id=payload.project_id,
+            estimated_hours=payload.estimated_hours,
+            actual_hours=payload.actual_hours,
         )
         if task.status == TaskStatus.DONE and task.done_at is None:
             task.done_at = datetime.now(UTC).replace(tzinfo=None)
@@ -67,21 +78,23 @@ class TaskService:
         status: TaskStatus | None = None,
         overdue: bool | None = None,
         assignee_id: int | None = None,
+        project_id: int | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[Task], int]:
         if actor.role == UserRole.ADMIN:
-            return self.repository.list(status=status, overdue=overdue, assignee_id=assignee_id, page=page, page_size=page_size)
+            return self.repository.list(status=status, overdue=overdue, assignee_id=assignee_id, project_id=project_id, page=page, page_size=page_size)
         if actor.role == UserRole.MANAGER:
             return self.repository.list(
                 status=status,
                 overdue=overdue,
                 department_id=actor.department_id,
                 assignee_id=assignee_id,
+                project_id=project_id,
                 page=page,
                 page_size=page_size,
             )
-        return self.repository.list(status=status, overdue=overdue, assignee_id=actor.id, page=page, page_size=page_size)
+        return self.repository.list(status=status, overdue=overdue, assignee_id=actor.id, project_id=project_id, page=page, page_size=page_size)
 
     def get_task_for_actor(self, actor: User, task_id: int) -> Task:
         task = self.get_task_by_id(task_id)
@@ -91,6 +104,10 @@ class TaskService:
         if actor.role == UserRole.MANAGER:
             if task.department_id != actor.department_id:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this task")
+            return task
+        if self._can_manage_project_tasks(task.project_id, actor):
+            return task
+        if task.reviewer_id == actor.id:
             return task
         if task.assignee_id != actor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this task")
@@ -102,10 +119,23 @@ class TaskService:
         old_assignee_id = task.assignee_id
         old_project_id = task.project_id
 
-        if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
+        can_manage_project_tasks = self._can_manage_project_tasks(task.project_id, actor)
+        is_reviewer = task.reviewer_id == actor.id
+
+        if actor.role == UserRole.STAFF and task.assignee_id != actor.id and not can_manage_project_tasks and not is_reviewer:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to update this task")
 
         data = payload.model_dump(exclude_unset=True)
+        if actor.role == UserRole.STAFF and not can_manage_project_tasks:
+            allowed_fields = {"status"} if is_reviewer and task.assignee_id != actor.id else {"status", "actual_hours"}
+            forbidden_fields = set(data) - allowed_fields
+            if forbidden_fields:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Staff can only update allowed task workflow fields",
+                )
+
+        self._validate_status_transition(task, payload.status, actor)
 
         if "department_id" in data:
             department = self.department_service.ensure_department_exists(data["department_id"])
@@ -120,8 +150,17 @@ class TaskService:
             if actor.role == UserRole.MANAGER and assignee.department_id != actor.department_id:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to assign tasks outside your department")
 
-        if "project_id" in data:
-            self._ensure_project_is_usable(data["project_id"], data.get("department_id", task.department_id), actor)
+        if "reviewer_id" in data and data["reviewer_id"] is not None:
+            reviewer = self._get_user_or_404(data["reviewer_id"])
+            self._ensure_assignee_matches_department(reviewer, data.get("department_id", task.department_id))
+
+        if "project_id" in data or "assignee_id" in data:
+            self._ensure_project_is_usable(
+                data.get("project_id", task.project_id),
+                data.get("department_id", task.department_id),
+                data.get("assignee_id", task.assignee_id),
+                actor,
+            )
 
         for field, value in data.items():
             setattr(task, field, value)
@@ -132,6 +171,8 @@ class TaskService:
         # ANTI-CHEATING: Phát hiện Reopen
         elif old_status == TaskStatus.DONE and payload.status is not None and payload.status != TaskStatus.DONE:
             task.done_at = None
+            task.reopen_count = (task.reopen_count or 0) + 1
+        elif old_status == TaskStatus.IN_REVIEW and payload.status in {TaskStatus.TODO, TaskStatus.DOING}:
             task.reopen_count = (task.reopen_count or 0) + 1
 
         updated_task = self.repository.update(task)
@@ -158,8 +199,8 @@ class TaskService:
         assignee_id = task.assignee_id
         project_id = task.project_id
 
-        if actor.role == UserRole.STAFF and task.assignee_id != actor.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to delete this task")
+        if actor.role == UserRole.STAFF and not self._can_manage_project_tasks(project_id, actor):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff cannot delete tasks")
 
         self.repository.delete(task)
         self._recalculate_kpi_for_users(assignee_id)
@@ -182,6 +223,8 @@ class TaskService:
         user = self.user_repository.get_by_id(user_id)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="User must be active")
         return user
 
     def _ensure_assignee_matches_department(self, assignee: User, department_id: int) -> None:
@@ -191,7 +234,7 @@ class TaskService:
                 detail="Assignee must belong to the same department as the task",
             )
 
-    def _ensure_project_is_usable(self, project_id: int | None, department_id: int, actor: User) -> None:
+    def _ensure_project_is_usable(self, project_id: int | None, department_id: int, assignee_id: int, actor: User) -> None:
         if project_id is None:
             return
 
@@ -199,17 +242,94 @@ class TaskService:
         if project is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
+        if project.status in {
+            ProjectStatus.COMPLETED.value,
+            ProjectStatus.CANCELLED.value,
+            ProjectStatus.ARCHIVED.value,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot assign tasks to completed, cancelled or archived projects",
+            )
+
         if project.department_id is not None and project.department_id != department_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Project must belong to the same department as the task",
             )
 
-        if actor.role == UserRole.MANAGER and project.department_id != actor.department_id:
+        if not self._can_manage_project_tasks(project_id, actor):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not allowed to use projects outside your department",
+                detail="Not allowed to manage tasks in this project",
             )
+
+        active_member = self.db.query(ProjectMember).filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == assignee_id,
+            ProjectMember.is_active == True,
+        ).first()
+        if active_member is None and project.manager_id != assignee_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Nhân viên chưa thuộc project này. Hãy thêm nhân viên vào project trước khi giao task.",
+            )
+
+    def _can_manage_project_tasks(self, project_id: int | None, actor: User) -> bool:
+        if actor.role == UserRole.ADMIN:
+            return True
+        if project_id is None:
+            return actor.role == UserRole.MANAGER
+        project = self.db.get(Project, project_id)
+        if project is None:
+            return False
+        if actor.role == UserRole.MANAGER:
+            return project.department_id == actor.department_id
+        member = self.db.query(ProjectMember).filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == actor.id,
+            ProjectMember.is_active == True,
+        ).first()
+        return bool(
+            member
+            and member.role in {ProjectMemberRole.PROJECT_MANAGER, ProjectMemberRole.TEAM_LEAD}
+        )
+
+    def _validate_status_transition(self, task: Task, new_status: TaskStatus | None, actor: User) -> None:
+        if new_status is None or new_status == task.status:
+            return
+        if task.reviewer_id is None:
+            return
+
+        if new_status == TaskStatus.DONE:
+            if task.status != TaskStatus.IN_REVIEW:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Task must be submitted for review before completion",
+                )
+            if not self._can_approve_task_review(task, actor):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the reviewer or an authorized manager can approve this task",
+                )
+        elif task.status == TaskStatus.IN_REVIEW and new_status in {TaskStatus.TODO, TaskStatus.DOING}:
+            if not self._can_approve_task_review(task, actor):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the reviewer or an authorized manager can return this task",
+                )
+        elif task.status == TaskStatus.IN_REVIEW:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Tasks in review can only be approved or returned",
+            )
+
+    def _can_approve_task_review(self, task: Task, actor: User) -> bool:
+        if actor.role == UserRole.ADMIN or task.reviewer_id == actor.id:
+            return True
+        if actor.role == UserRole.MANAGER and task.department_id == actor.department_id:
+            return True
+        return self._can_manage_project_tasks(task.project_id, actor)
 
     def _recalculate_kpi_for_users(self, *user_ids: int) -> None:
         engine = KpiEngine(self.db)

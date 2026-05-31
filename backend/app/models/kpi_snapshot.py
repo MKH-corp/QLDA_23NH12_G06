@@ -1,9 +1,13 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSON, UniqueConstraint
 from sqlalchemy.sql import func
 from app.db.base import Base
 
 class KpiSnapshot(Base):
     __tablename__ = "kpi_snapshots"
+    __table_args__ = (
+        UniqueConstraint("user_id", "period_type", "period_key", name="uq_kpi_snapshot_user_period"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     period_type = Column(String(20), default="MONTHLY") # DAILY, WEEKLY, MONTHLY

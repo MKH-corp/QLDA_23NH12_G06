@@ -75,6 +75,7 @@ def create_task(
     base_weight: int = 1,
     project_id: int | None = None,
     reopen_count: int = 0,
+    estimated_hours: float | None = None,
 ) -> Task:
     task = Task(
         title=title,
@@ -87,6 +88,7 @@ def create_task(
         department_id=assignee.department_id,
         project_id=project_id,
         reopen_count=reopen_count,
+        estimated_hours=estimated_hours,
     )
     db.add(task)
     db.commit()

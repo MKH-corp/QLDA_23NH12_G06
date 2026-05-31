@@ -2,6 +2,7 @@ import unittest
 from datetime import date, datetime, timedelta, timezone
 
 from app.models.kpi_snapshot import KpiSnapshot
+from app.models.kpi_rule import KpiRule
 from app.models.task import TaskStatus
 from app.models.user import UserRole
 from app.schemas.task import TaskCreate, TaskUpdate
@@ -68,11 +69,42 @@ class KpiEngineTests(unittest.TestCase):
             deadline=business_today(),
             done_at=self.now,
             base_weight=10,
-            reopen_count=1,
+            reopen_count=3,
         )
         snapshot = KpiEngine(self.db).recalculate_monthly_kpi(self.staff.id)
-        self.assertEqual(snapshot.total_score, 7.0)
-        self.assertEqual(snapshot.breakdown["reopen_penalty_amount"], -5.0)
+        self.assertEqual(snapshot.total_score, 0.0)
+        self.assertEqual(snapshot.breakdown["reopen_penalty_amount"], -15.0)
+
+    def test_estimated_hours_do_not_inflate_score(self) -> None:
+        create_task(
+            self.db,
+            self.manager,
+            self.staff,
+            title="Estimated workload only",
+            status=TaskStatus.DONE,
+            deadline=business_today(),
+            done_at=self.now,
+            base_weight=2,
+            estimated_hours=100,
+        )
+        snapshot = KpiEngine(self.db).recalculate_monthly_kpi(self.staff.id)
+        self.assertEqual(snapshot.total_score, 2.4)
+
+    def test_database_rule_controls_overdue_penalty(self) -> None:
+        self.db.add(KpiRule(code="OVERDUE_PENALTY", multiplier=0.8, is_active=True))
+        self.db.commit()
+        create_task(
+            self.db,
+            self.manager,
+            self.staff,
+            title="Configured late penalty",
+            status=TaskStatus.DONE,
+            deadline=business_today() - timedelta(days=1),
+            done_at=self.now,
+            base_weight=10,
+        )
+        snapshot = KpiEngine(self.db).recalculate_monthly_kpi(self.staff.id)
+        self.assertEqual(snapshot.total_score, 8.0)
 
     def test_task_service_refreshes_snapshot_for_create_reopen_and_delete(self) -> None:
         service = TaskService(self.db)
@@ -80,18 +112,20 @@ class KpiEngineTests(unittest.TestCase):
             self.manager,
             TaskCreate(
                 title="Lifecycle",
-                status=TaskStatus.DONE,
+                status=TaskStatus.IN_REVIEW,
                 deadline=business_today(),
                 base_weight=10,
                 assignee_id=self.staff.id,
                 department_id=self.staff.department_id,
             ),
         )
+        service.update_task(self.manager, created.id, TaskUpdate(status=TaskStatus.DONE))
         self.assertEqual(self._snapshot().total_score, 12.0)
 
         service.update_task(self.manager, created.id, TaskUpdate(status=TaskStatus.BLOCKED))
         self.assertEqual(self._snapshot().total_score, 0.0)
 
+        service.update_task(self.manager, created.id, TaskUpdate(status=TaskStatus.IN_REVIEW))
         service.update_task(self.manager, created.id, TaskUpdate(status=TaskStatus.DONE))
         self.assertEqual(self._snapshot().total_score, 7.0)
 
@@ -110,13 +144,14 @@ class KpiEngineTests(unittest.TestCase):
             self.manager,
             TaskCreate(
                 title="Transfer",
-                status=TaskStatus.DONE,
+                status=TaskStatus.IN_REVIEW,
                 deadline=business_today(),
                 base_weight=10,
                 assignee_id=self.staff.id,
                 department_id=self.staff.department_id,
             ),
         )
+        service.update_task(self.manager, created.id, TaskUpdate(status=TaskStatus.DONE))
 
         service.update_task(self.manager, created.id, TaskUpdate(assignee_id=second_staff.id))
 

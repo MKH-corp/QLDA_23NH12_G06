@@ -9,6 +9,7 @@ import { ManagerTasksPage } from './pages/ManagerTasksPage';
 import { AdminPage } from './pages/AdminPage';
 import { EmployeeManagementPage } from './pages/EmployeeManagementPage';
 import { ProjectManagementPage } from './pages/ProjectManagementPage';
+import { MyProjectsPage } from './pages/MyProjectsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { KpiTrackingPage } from './pages/KpiTrackingPage';
 
@@ -22,10 +23,15 @@ function App() {
         <Route element={<AppShell />}>
           <Route element={<ProtectedRoute roles={['staff']} />}>
             <Route path="/staff/tasks" element={<StaffTasksPage />} />
+            <Route path="/staff/projects" element={<MyProjectsPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['manager']} />}>
             <Route path="/manager/tasks" element={<ManagerTasksPage />} />
+            <Route path="/manager/projects" element={<ProjectManagementPage />} />
+            <Route path="/manager/my-projects" element={<MyProjectsPage />} />
+            <Route path="/manager/reports" element={<ReportsPage />} />
+            <Route path="/manager/kpi" element={<KpiTrackingPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['admin']} />}>

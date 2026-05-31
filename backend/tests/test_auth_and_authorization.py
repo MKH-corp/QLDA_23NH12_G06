@@ -6,8 +6,10 @@ from app.api.deps import require_admin, require_authenticated_user, require_mana
 from app.models.task import TaskStatus
 from app.models.user import UserRole
 from app.schemas.task import TaskCreate
+from app.schemas.user import UserUpdate
 from app.services.auth_service import AuthService
 from app.services.task_service import TaskService
+from app.services.user_service import UserService
 from tests.helpers import close_session, create_department, create_task, create_user, make_session
 
 
@@ -46,6 +48,16 @@ class AuthTests(unittest.TestCase):
             require_admin(self.staff)
         with self.assertRaises(HTTPException):
             require_manager_or_admin(self.staff)
+
+    def test_empty_password_update_keeps_existing_password_hash(self) -> None:
+        old_hash = self.staff.password_hash
+        updated = UserService(self.db).update_user(self.staff.id, UserUpdate(password=""))
+        self.assertEqual(updated.password_hash, old_hash)
+
+    def test_delete_user_soft_deactivates_account(self) -> None:
+        UserService(self.db).delete_user(self.staff.id)
+        self.assertFalse(self.staff.is_active)
+        self.assertIsNotNone(self.db.get(type(self.staff), self.staff.id))
 
 
 class TaskAuthorizationTests(unittest.TestCase):
@@ -100,6 +112,18 @@ class TaskAuthorizationTests(unittest.TestCase):
         tasks, total = TaskService(self.db).list_tasks(self.staff)
         self.assertEqual([item.id for item in tasks], [own_task.id])
         self.assertEqual(total, 1)
+
+    def test_staff_cannot_delete_assigned_task(self) -> None:
+        task = create_task(
+            self.db,
+            self.manager,
+            self.staff,
+            title="Assigned task",
+            status=TaskStatus.TODO,
+        )
+        with self.assertRaises(HTTPException) as context:
+            TaskService(self.db).delete_task(self.staff, task.id)
+        self.assertEqual(context.exception.status_code, 403)
 
 
 if __name__ == "__main__":

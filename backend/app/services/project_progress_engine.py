@@ -42,7 +42,7 @@ class ProjectProgressEngine:
         task_score      = self._task_score(project)
         milestone_score = self._milestone_score(project)
 
-        raw = (task_score * self.TASK_WEIGHT) + (milestone_score * self.MILESTONE_WEIGHT)
+        raw = self._combine_scores(project, task_score, milestone_score)
         progress = round(max(0.0, min(100.0, raw * 100)), 2)
 
         project.progress_percentage = progress
@@ -90,7 +90,7 @@ class ProjectProgressEngine:
             "reopen_penalty":    round(reopen_penalty,  4),
             "total_milestones":  len(milestones),
             "done_milestones":   sum(1 for m in milestones if m.is_completed),
-            "final_progress":    round((task_score * self.TASK_WEIGHT + milestone_score * self.MILESTONE_WEIGHT) * 100, 2),
+            "final_progress":    round(self._combine_scores(project, task_score, milestone_score) * 100, 2),
         }
 
     # ── private helpers ─────────────────────────────────────────────────
@@ -128,3 +128,19 @@ class ProjectProgressEngine:
         total = sum(m.weight for m in milestones) or 1
         done  = sum(m.weight for m in milestones if m.is_completed)
         return done / total
+
+    def _combine_scores(self, project: Project, task_score: float, milestone_score: float) -> float:
+        has_tasks = self.db.query(Task.id).filter(Task.project_id == project.id).first() is not None
+        has_milestones = (
+            self.db.query(ProjectMilestone.id)
+            .filter(ProjectMilestone.project_id == project.id)
+            .first()
+            is not None
+        )
+        if has_tasks and has_milestones:
+            return (task_score * self.TASK_WEIGHT) + (milestone_score * self.MILESTONE_WEIGHT)
+        if has_tasks:
+            return task_score
+        if has_milestones:
+            return milestone_score
+        return 0.0

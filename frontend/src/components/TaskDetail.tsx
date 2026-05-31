@@ -45,7 +45,7 @@ export function TaskDetail({ task, onStatusChange }: TaskDetailProps) {
 
       {onStatusChange ? (
         <div className="status-actions">
-          {(['todo', 'doing', 'blocked', 'done'] as Array<Task['status']>).map((status) => (
+          {(['todo', 'doing', 'in_review', 'blocked', 'done'] as Array<Task['status']>).map((status) => (
             <button key={status} type="button" className={task.status === status ? 'button-secondary' : ''} onClick={() => onStatusChange(status)}>
               Chuyển sang {status}
             </button>

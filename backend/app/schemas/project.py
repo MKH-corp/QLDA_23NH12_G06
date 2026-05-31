@@ -25,6 +25,7 @@ class ProjectCreate(BaseModel):
     end_date: date | None     = None
     estimated_hours: float | None  = None
     estimated_budget: float | None = None
+    project_weight: float = Field(default=1.0, ge=0.1, le=10)
 
 
 class ProjectUpdate(BaseModel):
@@ -39,6 +40,7 @@ class ProjectUpdate(BaseModel):
     end_date: date | None     = None
     estimated_hours: float | None  = None
     estimated_budget: float | None = None
+    project_weight: float | None = Field(default=None, ge=0.1, le=10)
     reason: str | None        = None   # lý do đổi status (ghi vào history)
 
 
@@ -49,6 +51,8 @@ class ProjectMemberRead(BaseModel):
     full_name: str = ""
     email: str     = ""
     role: ProjectMemberRole
+    contribution_share: float = 0
+    is_active: bool = True
     joined_at: datetime
 
     @classmethod
@@ -57,8 +61,19 @@ class ProjectMemberRead(BaseModel):
             id=m.id, user_id=m.user_id,
             full_name=m.user.full_name if m.user else "",
             email=m.user.email if m.user else "",
-            role=m.role, joined_at=m.joined_at,
+            role=m.role,
+            contribution_share=m.contribution_share or 0,
+            is_active=bool(m.is_active),
+            joined_at=m.joined_at,
         )
+
+
+class AssignableUserRead(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    department_id: int
+    project_role: ProjectMemberRole
 
 
 class MilestoneRead(BaseModel):
@@ -77,6 +92,13 @@ class MilestoneCreate(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     due_date: date | None   = None
     weight: int             = Field(default=1, ge=1, le=10)
+
+
+class MilestoneUpdate(BaseModel):
+    title: str | None       = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+    due_date: date | None   = None
+    weight: int | None      = Field(default=None, ge=1, le=10)
 
 
 class StatusHistoryRead(BaseModel):
@@ -133,17 +155,24 @@ class ProjectListItem(BaseModel):
     progress_percentage: float
     start_date: date | None
     end_date: date | None
+    estimated_hours: float | None = None
+    estimated_budget: float | None = None
     department_id: int | None = None
     manager_id: int | None    = None
     department_name: str = ""
     manager_name: str    = ""
     total_tasks: int     = 0
     completed_tasks: int = 0
+    done_tasks: int      = 0
+    task_completion_percentage: float = 0
+    project_progress_percentage: float = 0
     overdue_tasks: int   = 0
     member_count: int    = 0
+    total_members: int   = 0
     milestone_count: int = 0
     milestones_done: int = 0
     is_overdue: bool     = False
+    project_weight: float = 1
 
 
 class TaskSummary(BaseModel):
@@ -153,7 +182,12 @@ class TaskSummary(BaseModel):
     status: str
     priority: str
     deadline: date | None
+    done_at: datetime | None = None
+    base_weight: int = 1
+    assignee_id: int | None = None
     assignee_name: str = ""
+    project_id: int | None = None
+    department_id: int | None = None
     is_overdue: bool   = False
 
 
@@ -170,21 +204,52 @@ class ProjectKpiContribution(BaseModel):
 class ProjectAnalytics(BaseModel):
     """Analytics đầy đủ cho 1 project."""
     progress_percentage: float
+    project_progress_percentage: float = 0
     total_tasks: int
     completed_tasks: int
+    done_tasks: int = 0
     pending_tasks: int
+    todo_tasks: int = 0
     doing_tasks: int
+    review_tasks: int = 0
     blocked_tasks: int
     overdue_tasks: int
     completion_rate: float
+    task_completion_percentage: float = 0
     on_time_rate: float
     velocity: float               # tasks/tuần trung bình
     estimated_hours: float | None
     actual_hours: float
     budget_utilization: float | None
     milestone_progress: float     # % milestones hoàn thành
+    total_members: int = 0
+    total_milestones: int = 0
+    completed_milestones: int = 0
+    milestone_completion_percentage: float = 0
     risk_level: str               # LOW / MEDIUM / HIGH / CRITICAL
     risk_indicators: list[str]
+
+
+class ProjectMemberPerformanceRead(BaseModel):
+    user_id: int
+    full_name: str
+    email: str
+    department_name: str = ""
+    project_role: ProjectMemberRole
+    contribution_share: float = 0
+    total_tasks: int = 0
+    done_tasks: int = 0
+    overdue_tasks: int = 0
+    task_completion_percentage: float = 0
+    kpi_score: float = 0
+
+
+class ProjectReportRead(BaseModel):
+    analytics: ProjectAnalytics
+    task_status_breakdown: dict[str, int]
+    member_performance: list[ProjectMemberPerformanceRead] = []
+    top_contributor: ProjectMemberPerformanceRead | None = None
+    most_overdue_member: ProjectMemberPerformanceRead | None = None
 
 
 class ProjectOverview(BaseModel):
@@ -202,6 +267,9 @@ class ProjectOverview(BaseModel):
     estimated_hours: float | None
     actual_hours: float
     estimated_budget: float | None
+    project_weight: float = 1
+    department_id: int | None = None
+    manager_id: int | None = None
     department_name: str = ""
     manager_name: str    = ""
     created_at: datetime | None
@@ -222,7 +290,45 @@ class ProjectOverview(BaseModel):
 class AddMemberRequest(BaseModel):
     user_id: int
     role: ProjectMemberRole = ProjectMemberRole.MEMBER
+    contribution_share: float = Field(default=0, ge=0, le=100)
+    is_active: bool = True
 
 
 class UpdateMemberRoleRequest(BaseModel):
-    role: ProjectMemberRole
+    role: ProjectMemberRole | None = None
+    contribution_share: float | None = Field(default=None, ge=0, le=100)
+    is_active: bool | None = None
+
+
+class MyProjectRead(BaseModel):
+    project_id: int
+    project_code: str | None
+    project_name: str
+    description: str | None = None
+    department: str = ""
+    project_status: str
+    project_role: ProjectMemberRole | None = None
+    contribution_share: float = 0
+    start_date: date | None = None
+    due_date: date | None = None
+    progress: float = 0
+    project_health: str = "OK"
+    assigned_tasks: int = 0
+    doing_tasks: int = 0
+    review_tasks: int = 0
+    done_tasks: int = 0
+    overdue_tasks: int = 0
+
+
+class TeamWorkloadRead(BaseModel):
+    user_id: int
+    full_name: str
+    email: str
+    active_projects: int = 0
+    assigned_tasks: int = 0
+    doing_tasks: int = 0
+    review_tasks: int = 0
+    overdue_tasks: int = 0
+    estimated_hours: float = 0
+    actual_hours: float = 0
+    workload_status: str = "NORMAL"

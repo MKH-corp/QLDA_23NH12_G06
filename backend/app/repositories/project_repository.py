@@ -6,7 +6,7 @@ ProjectRepository — tất cả query được tối ưu:
 """
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.project import (
@@ -82,6 +82,38 @@ class ProjectRepository:
             q = q.filter(Project.manager_id == manager_id)
         return q.offset(skip).limit(limit).all()
 
+    def list_for_manager(
+        self,
+        manager_id: int,
+        department_id: int,
+        filter_department_id: int | None = None,
+        status: str | None = None,
+        filter_manager_id: int | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[Project]:
+        q = (
+            self.db.query(Project)
+            .options(
+                joinedload(Project.department),
+                joinedload(Project.manager),
+            )
+            .filter(
+                or_(
+                    Project.department_id == department_id,
+                    Project.manager_id == manager_id,
+                )
+            )
+            .order_by(Project.created_at.desc())
+        )
+        if filter_department_id:
+            q = q.filter(Project.department_id == filter_department_id)
+        if status:
+            q = q.filter(Project.status == status)
+        if filter_manager_id:
+            q = q.filter(Project.manager_id == filter_manager_id)
+        return q.offset(skip).limit(limit).all()
+
     def update(self, project: Project) -> Project:
         self.db.add(project)
         self.db.commit()
@@ -105,10 +137,14 @@ class ProjectRepository:
             .group_by(Task.status)
             .all()
         )
-        counts: dict[str, int] = {r[0]: r[1] for r in rows}
+        counts: dict[str, int] = {
+            (r[0].value if hasattr(r[0], "value") else r[0]): r[1]
+            for r in rows
+        }
         total     = sum(counts.values())
         completed = counts.get("done", 0)
         doing     = counts.get("doing", 0)
+        review    = counts.get("in_review", 0)
         blocked   = counts.get("blocked", 0)
         pending   = counts.get("todo", 0)
 
@@ -123,7 +159,7 @@ class ProjectRepository:
             .scalar() or 0
         )
         return dict(
-            total=total, completed=completed, doing=doing,
+            total=total, completed=completed, doing=doing, review=review,
             blocked=blocked, pending=pending, overdue=overdue,
         )
 
@@ -150,6 +186,17 @@ class ProjectRepository:
             .first()
         )
 
+    def list_members(self, project_id: int, active_only: bool = False) -> list[ProjectMember]:
+        query = (
+            self.db.query(ProjectMember)
+            .options(joinedload(ProjectMember.user))
+            .filter(ProjectMember.project_id == project_id)
+            .order_by(ProjectMember.role.asc(), ProjectMember.joined_at.asc())
+        )
+        if active_only:
+            query = query.filter(ProjectMember.is_active == True)
+        return query.all()
+
     def add_member(self, member: ProjectMember) -> ProjectMember:
         self.db.add(member)
         self.db.commit()
@@ -157,12 +204,14 @@ class ProjectRepository:
         return member
 
     def remove_member(self, member: ProjectMember) -> None:
-        self.db.delete(member)
+        member.is_active = False
+        self.db.add(member)
         self.db.commit()
 
     def update_member(self, member: ProjectMember) -> ProjectMember:
         self.db.add(member)
         self.db.commit()
+        self.db.refresh(member)
         return member
 
     # ── Milestone management ────────────────────────────────────────────
@@ -218,7 +267,10 @@ class ProjectRepository:
         """Lấy project mà user là thành viên (kể cả manager)."""
         member_project_ids = (
             self.db.query(ProjectMember.project_id)
-            .filter(ProjectMember.user_id == user_id)
+            .filter(
+                ProjectMember.user_id == user_id,
+                ProjectMember.is_active == True,
+            )
             .subquery()
         )
         return (

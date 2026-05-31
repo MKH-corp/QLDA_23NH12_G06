@@ -70,7 +70,11 @@ export function EmployeeForm({ isOpen, onClose, onSubmit, initialData, departmen
     setError('');
 
     try {
-      await onSubmit(formData as any);
+      const payload = { ...formData };
+      if (isEditMode && !payload.password) {
+        delete (payload as Partial<typeof payload>).password;
+      }
+      await onSubmit(payload as any);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Đã xảy ra lỗi');
